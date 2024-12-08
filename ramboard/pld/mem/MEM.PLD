@@ -9,7 +9,7 @@ Assembly multibus ram mem;
 Device G22V10;
 
 /* Inputs: */
-Pin 1  = !MSR0;
+Pin 1  = !MSB0;
 Pin 2  = MSRAM1;
 Pin 3  = MSRAM2;
 Pin 4  = MSROM1;
@@ -34,8 +34,13 @@ Pin 16 = !IOWR;
 Pin 15 = NC1;
 Pin 14 = NC2;
 
-ROMCS = (MSROM1 # MSROM2) & (!INHIBIT);          /* FIXME: add MSB0 */
-RAMCS = (MSRAM1 # MSRAM2 # MSBANK) & (!INHIBIT); /* FIXME: add MSB0 */
+/* NOTE: intended to gate ROMCS and RAM0CS on MSB0, but found that
+ * A16, A17, A18, and A19 are not implemented on the 80/24 board
+ */
+
+ROMCS = (MSROM1 # MSROM2) & (!INHIBIT);  /* ROM selected in bank 0 and not inhibited */
+RAM0CS = (MSRAM1 # MSRAM2);			/* RAM selected in bank 0 */
+RAMCS = (RAM0CS # MSBANK) & (!INHIBIT);         /* RAM selected in bank 0 or ram selected in high banks and not inhibited */
 
 _RAMRD = RAMCS & (!ROMCS) & MRDC;
 _RAMWR = RAMCS & MWTC;
