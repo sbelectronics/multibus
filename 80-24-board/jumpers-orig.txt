@@ -1,0 +1,62 @@
+these are the jumpers I found on my 80-24 CPU board from ebay
+
+several of these I crossed referenced with the 80-24A manual, but some of those are suspect.
+
+41-27              E4 bus xcvr input
+40-42-28           E6-0 to driver-terminator and P1A1
+43-29	           E6-1 to terminator
+44-30              E6-2 to terminator
+47-32
+48-31
+49-34
+50-35              E6-7 to terminator
+51-36-37           +5V to timer gate 0 and timer gate 1
+45-97              E6-? to interrupt (128)       PIB2			ALL OF THESE ARE SUSPECT
+115-83             (146-114)                     INT7-IR7
+84-85-86-87        (115-116-117-118)            
+117-96             (148-127)                     ??-PIA2
+106-100 ?          INT2-IR1 ?
+118-101            OIT0-IR2 ?
+105-99-88          (136-130-119)		 ??-IR5-IR7
+119-120-121-122-123 (150-151-152-153-154)        PFI-TXR-RXR-??-OIT0
+98-89-109          (129-120-140)		 ??-MIOINT0-INT3
+96-102-73-59       (127-133-??-??)               PIA2-IR3-
+55-56 		   E8 bus xcvr to output
+70-72-185                                       , 8255-PC0
+71-57-184          EA-bit-0 to driver/terminator, 8255-PC1
+74-60
+76-62
+77-63
+78-64
+79-65
+143-140		   enable failsafe
+145-142	           RAMACK to READY
+151-152		   RAM AREA?    maybe to A000-BFFF not sure -- move to 150-151?
+138-139		   8824 osc to divider
+125-126		   9.68 MHZ Clock
+131-136            2.15 MHZ to PIT		   
+130-134            1.075 MHZ to CLK1 on PIT
+129-133		   1.075 MHZ to CLK0 on PIT
+18-19-20           internal RXC/TXC
+158-159            9.68 MHZ BCLK to P1-13
+160-161            BPRO to P1-16
+164-165            9.68 MHZ CCLK to P1-31
+178-179            INTA to P2-36
+180-181            BTMO to P2-34
+
+Eprom config from screen shot on ebay
+   J7 2,3,4,5,6 straight across
+
+Eprom config 2732 - from 80/24a datasheet do not make sense
+   J7-4 to J7-11    181-182  AB to pin 23
+   J8-1 to J8-18    183-184  AA to pin 21
+   J7-8 to J7-6     190-191  PROMACK to pin 20
+   J8-5 to J8-15    192-193  GND to PYTPE0
+   J8-16 to J7-2    196-197  +5 to PTYPE1
+
+Eprom config 2764 - from 80/24a datasheet do not make sense
+   J7-4 to J7-11    181-182  AB to pin 23
+   J8-1 to J8-18    183-184  AA to pin 21
+   J7-8 to J7-6     190-191  PROMACK to pin 20
+   J8-15 to J8-9    193-194  +5 to PTYPE0
+   J8-16 to J7-2    196-197  +5 to PTYPE1
