@@ -331,6 +331,9 @@ class IOCInterface:
             self.handleKSTC()
         elif cmd==CMD_RDSTS:
             self.handleRDSTS()
+        else:
+            self.error("  unimplemented command: %s" % cmdName)
+            self.nilCommandResultAndResetF0()
     
     def run(self):
         self.readDBIN()  # reset will leave IBF set, so clear it
