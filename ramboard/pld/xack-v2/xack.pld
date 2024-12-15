@@ -12,7 +12,7 @@ Device G22V10;
 Pin 1  = CCLK;
 Pin 2  = !BOARDCS;
 Pin 3  = CLKJMP;
-Pin 4  = NC4;
+Pin 4  = !SLAVECS;
 Pin 5  = NC5;
 Pin 6  = NC6;
 Pin 7  = NC7;
@@ -32,27 +32,25 @@ Pin 18 = CLK56;
 Pin 17 = CLK67;
 Pin 16 = CLK78;
 Pin 15 = !XACK;
-Pin 14 = NC14;
+Pin 14 = TMP;
 
-/* For the slave board, will have to use NC14 as temp and
- * slavecs on pin 4
- */
+TMP = BOARDCS # SLAVECS;
 
-CLK01.D = BOARDCS;
+CLK01.D = TMP;
 
-CLK12.D = CLK01 & BOARDCS;
+CLK12.D = CLK01 & TMP;
 
-CLK23.D = CLK12 & BOARDCS;
+CLK23.D = CLK12 & TMP;
 
-CLK34.D = CLK23 & BOARDCS;
+CLK34.D = CLK23 & TMP;
 
-CLK45.D = CLK34 & BOARDCS;
+CLK45.D = CLK34 & TMP;
 
-CLK56.D = CLK45 & BOARDCS;
+CLK56.D = CLK45 & TMP;
 
-CLK67.D = CLK56 & BOARDCS;
+CLK67.D = CLK56 & TMP;
 
-CLK78.D = CLK67 & BOARDCS;
+CLK78.D = CLK67 & TMP;
 
 XACK = 'b'1;
-XACK.OE = CLKJMP & BOARDCS;
+XACK.OE = CLKJMP & TMP;
