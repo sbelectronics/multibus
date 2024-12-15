@@ -270,6 +270,19 @@ class IOCInterface:
             else:
                 time.sleep(0.1)
 
+    def handlePACIFY(self):
+        # reset the IOC hardware and software
+        self.nilCommandResultAndResetF0()
+
+    def handleERESET(self):
+        # not implemented in IOC firmware
+        self.nilCommandResultAndResetF0()
+
+    def handleDECHO(self):
+        value = self.getInputByte()
+        value = ~value & 0xFF
+        self.setCommandResultAndResetF0(value)
+
     def handleCRTS(self):
         self.setCommandResultAndResetF0(0x01)
 
@@ -302,7 +315,13 @@ class IOCInterface:
 
         self.wantInt = int
 
-        if cmd==CMD_CRTC:
+        if cmd==CMD_PACIFY:
+            self.handlePACIFY()
+        elif cmd==CMD_ERESET:
+            self.handleERESET()
+        elif cmd==CMD_DECHO:
+            self.handleDECHO()
+        elif cmd==CMD_CRTC:
             self.handleCRTC()
         elif cmd==CMD_CRTS:
             self.handleCRTS()

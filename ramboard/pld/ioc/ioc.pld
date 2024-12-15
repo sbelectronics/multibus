@@ -39,8 +39,19 @@ _MREAD = IORC & IOC_CS;
 _MDATAREAD = (!A0) & _MREAD;
 _MSTATREAD = A0 & _MREAD;
 
-OBF = OBQ & !_MDATAREAD;  /* OBF set if OBQ and master is not reading data */
-IBF = IBQ & !PSELDBIN;    /* IBF set if IBQ and ioc is not reading cmd/data */
+/*
+  OBF=1 if ...
+     OBQ=L
+     !MOBOC=L == MOBOC=H
+
+  IBF=1 if ...
+     IBQ=L
+     !PSELDBIN=L == PSELDBIN=H
+
+*/
+
+OBF = (!OBQ) # _MDATAREAD;  /* OBF set if OBQ=L or master is reading data */
+IBF = (!IBQ) # PSELDBIN;    /* IBF set if IBQ=L or slave is reading data */
 MSELSTAT = _MSTATREAD;    /* Select the master status reg when master reading status */
 MOBOC = _MDATAREAD;       /* Enable output buffer to master when master reading data */
 MIBC74 = !_MWRITE;        /* CLK to master flipflops should be low during master write */
@@ -50,4 +61,3 @@ MCDF = !A0;               /* invert the C/D flag */
 POBC = !PSELDBOUT;        /* CLK to output buffer should be high during slave write */
 
 SLAVECS = _MWRITE # _MREAD; /* to signal XACK */
-
