@@ -1,4 +1,5 @@
 from __future__ import print_function
+import curses
 import string
 import sys
 import time
@@ -103,6 +104,9 @@ def isCMD(flags):
 class IOCInterface:
     def __init__(self, verbose):
         self.verbose = verbose
+        self.stdscr = None
+        self.keyWait = None
+        self.keyTimeout = False
 
         IO.setmode(IO.BCM)
         IO.setwarnings(False) # turn off warnings about reusing the pins
@@ -272,6 +276,24 @@ class IOCInterface:
             else:
                 time.sleep(0.1)
 
+    def keyReady(self):
+        if self.keyWait is not None:
+            return True
+        self.stdscr.nodelay(1)
+        k = self.stdscr.getch()
+        if k==curses.ERR:
+            return False
+        self.keyWait = k
+        return True
+    
+    def keyGet(self):
+        if self.keyReady():
+            k = self.keyWait
+            self.keyWait = None
+            return k
+        else:
+            return None
+
     def handlePACIFY(self):
         # reset the IOC hardware and software
         self.nilCommandResultAndResetF0()
@@ -292,17 +314,29 @@ class IOCInterface:
     def handleCRTC(self):
         self.setF0(0) # reset F0 before getting input byte
         value = self.getInputByte()
-        sys.stdout.write(chr(value))
-        sys.stdout.flush()
+        if self.stdscr is not None:
+            self.stdscr.addch(chr(value))
+        else:
+            sys.stdout.write(chr(value))
+            sys.stdout.flush()
         self.nilCommandResultAndResetF0()
 
     def handleKEYC(self):
         # TODO: get the keypress and return it
-        self.setCommandResultAndResetF0(0x00)
+        value = self.keyGet()
+        if value is None:
+            self.keyTimeout = True
+            self.setCommandResultAndResetF0(0x00)
+        else:
+            self.setCommandResultAndResetF0(value)
 
     def handleKSTC(self):
         v = KBD_PRESENT
-        # TODO: if key is ready, set KBD_READY
+        if self.keyReady():
+            v = v | KBD_READY
+        if self.keyTimeout:
+            v = v | KBD_TIMEOUT
+            self.keyTimeout = False
         self.setCommandResultAndResetF0(v)
 
     def handleRDSTS(self):
@@ -342,7 +376,8 @@ class IOCInterface:
 
         self.log("  command complete")
     
-    def run(self):
+    def run(self, stdscr):
+        self.stdscr = stdscr
         self.readDBIN()  # reset will leave IBF set, so clear it
         self.setF0(0)    # reset will leave F0 set, so clear it
         while True:
