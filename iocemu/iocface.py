@@ -239,20 +239,22 @@ class IOCInterface:
                 else:
                     data = self.readDBIN()
                     self.log("  got data byte: %2X" % data)
+                    return data
             time.sleep(0.001)
 
     def putOutputByte(self, value):
         while True:
             flags = self.readFlags()
             if not isOBF(flags):
+                self.log("  put data byte: %2X" % value)
                 self.writeDBOUT(value)
                 return
             time.sleep(0.001)
 
     def setCommandResultAndResetF0(self, value):
-        self.log("command complete with result to %2X" % value)
+        self.log("command complete with result %2X" % value)
         self.setF0(0)   # XXX should we do this before or after we put the output byte?
-        self.putOuputByte(value)
+        self.putOutputByte(value)
 
     def nilCommandResultAndResetF0(self):
         self.log("command complete with no result")
@@ -279,6 +281,7 @@ class IOCInterface:
         self.nilCommandResultAndResetF0()
 
     def handleDECHO(self):
+        self.setF0(0) # reset F0 before getting input byte
         value = self.getInputByte()
         value = ~value & 0xFF
         self.setCommandResultAndResetF0(value)
@@ -287,8 +290,10 @@ class IOCInterface:
         self.setCommandResultAndResetF0(0x01)
 
     def handleCRTC(self):
+        self.setF0(0) # reset F0 before getting input byte
         value = self.getInputByte()
-        self.stdout.write(value)
+        sys.stdout.write(chr(value))
+        sys.stdout.flush()
         self.nilCommandResultAndResetF0()
 
     def handleKEYC(self):
@@ -334,6 +339,8 @@ class IOCInterface:
         else:
             self.error("  unimplemented command: %s" % cmdName)
             self.nilCommandResultAndResetF0()
+
+        self.log("  command complete")
     
     def run(self):
         self.readDBIN()  # reset will leave IBF set, so clear it
@@ -348,5 +355,5 @@ class IOCInterface:
                 else:
                     self.error("out of band data byte: %2X" % v)
                     self.setF0(0)  # there was no command, so clear busy flag
-            time.sleep(0.01)
+            time.sleep(0.001)
             pass

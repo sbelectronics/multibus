@@ -18,7 +18,6 @@ def main():
     parser.add_option("-v", "--verbose", dest="verbose",
          help="verbose", action="store_true", default=False)
 
-
     (options, args) = parser.parse_args(sys.argv[1:])
 
     if len(args)==0:
