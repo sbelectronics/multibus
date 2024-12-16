@@ -1,9 +1,9 @@
 from __future__ import print_function
 import string
 import sys
-import curses
 import time
 from optparse import OptionParser
+from terminal import Terminal
 
 from iocface import IOCInterface
 
@@ -17,6 +17,9 @@ def main():
 
     parser.add_option("-v", "--verbose", dest="verbose",
          help="verbose", action="store_true", default=False)
+    
+    parser.add_option("-p", "--purge", dest="purge",
+         help="attempt to purge a KSTC that could be waiting", action="store_true", default=False)    
 
     (options, args) = parser.parse_args(sys.argv[1:])
 
@@ -30,8 +33,12 @@ def main():
     iocface = IOCInterface(options.verbose)
     try:
         if (cmd=="run"):
-            # wrapper sets noecho, cbreak, and keypad
-            curses.wrapper(iocface.run)
+            t=Terminal()
+            try:
+                t.setRaw()
+                iocface.run(t, purge=options.purge)
+            finally:
+                t.restoreRaw()
 
         if (cmd=="reset"):
             iocface.reset()

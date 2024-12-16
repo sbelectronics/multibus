@@ -1,6 +1,6 @@
 from __future__ import print_function
-import curses
 import string
+import select
 import sys
 import time
 import RPi.GPIO as IO
@@ -104,8 +104,6 @@ def isCMD(flags):
 class IOCInterface:
     def __init__(self, verbose):
         self.verbose = verbose
-        self.stdscr = None
-        self.keyWait = None
         self.keyTimeout = False
 
         IO.setmode(IO.BCM)
@@ -166,8 +164,11 @@ class IOCInterface:
     def error(self, msg):
         print(msg, file=sys.stderr)
 
-    def delay(self):
-        time.sleep(0.001)
+    def yieldCPU(self):
+        pass
+
+    def clkDelay(self):
+        pass
 
     def select(self, reg):
         if reg==REG_DBOUT:
@@ -230,7 +231,7 @@ class IOCInterface:
     def setF0(self, value):
         self.setA0(value)
         IO.output(PIN_CLKF0, 0)
-        self.delay()
+        self.clkDelay()
         IO.output(PIN_CLKF0, 1)
 
     def getInputByte(self):
@@ -244,7 +245,7 @@ class IOCInterface:
                     data = self.readDBIN()
                     self.log("  got data byte: %2X" % data)
                     return data
-            time.sleep(0.001)
+            self.yieldCPU()
 
     def putOutputByte(self, value):
         while True:
@@ -253,7 +254,7 @@ class IOCInterface:
                 self.log("  put data byte: %2X" % value)
                 self.writeDBOUT(value)
                 return
-            time.sleep(0.001)
+            self.yieldCPU()
 
     def setCommandResultAndResetF0(self, value):
         self.log("command complete with result %2X" % value)
@@ -274,23 +275,17 @@ class IOCInterface:
                     self.printDBIN()
                 lastFlags = flags
             else:
-                time.sleep(0.1)
+                self.yieldCPU()
 
     def keyReady(self):
-        if self.keyWait is not None:
-            return True
-        self.stdscr.nodelay(1)
-        k = self.stdscr.getch()
-        if k==curses.ERR:
-            return False
-        self.keyWait = k
-        return True
+        return self.terminal.keyReady()
     
     def keyGet(self):
         if self.keyReady():
-            k = self.keyWait
-            self.keyWait = None
-            return k
+            v=ord(self.terminal.keyGet())
+            if v==0x0A:
+                v=0x0D
+            return v
         else:
             return None
 
@@ -314,11 +309,8 @@ class IOCInterface:
     def handleCRTC(self):
         self.setF0(0) # reset F0 before getting input byte
         value = self.getInputByte()
-        if self.stdscr is not None:
-            self.stdscr.addch(chr(value))
-        else:
-            sys.stdout.write(chr(value))
-            sys.stdout.flush()
+        sys.stdout.write(chr(value))
+        sys.stdout.flush()
         self.nilCommandResultAndResetF0()
 
     def handleKEYC(self):
@@ -376,10 +368,12 @@ class IOCInterface:
 
         self.log("  command complete")
     
-    def run(self, stdscr):
-        self.stdscr = stdscr
+    def run(self, terminal, purge=False):
+        self.terminal = terminal
         self.readDBIN()  # reset will leave IBF set, so clear it
         self.setF0(0)    # reset will leave F0 set, so clear it
+        if (purge):
+            self.writeDBOUT(0)
         while True:
             flags = self.readFlags()
             if isIBF(flags):
@@ -390,5 +384,4 @@ class IOCInterface:
                 else:
                     self.error("out of band data byte: %2X" % v)
                     self.setF0(0)  # there was no command, so clear busy flag
-            time.sleep(0.001)
-            pass
+            self.yieldCPU()
