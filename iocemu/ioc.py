@@ -1,7 +1,7 @@
 from __future__ import print_function
-import smbus
 import string
 import sys
+import curses
 import time
 from optparse import OptionParser
 
@@ -30,7 +30,8 @@ def main():
     iocface = IOCInterface(options.verbose)
     try:
         if (cmd=="run"):
-            iocface.run()
+            # wrapper sets noecho, cbreak, and keypad
+            curses.wrapper(iocface.run)
 
         if (cmd=="reset"):
             iocface.reset()
