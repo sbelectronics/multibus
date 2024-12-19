@@ -37,6 +37,11 @@ def strip(s):
 def secOffset(sector, track, sectorsPerTrack):
     return (track * sectorsPerTrack + sector - 1) * 128
 
+def secNumberToSecTrack(secnum, sectorsPerTrack):
+    track = secnum // sectorsPerTrack
+    sector = (secnum % sectorsPerTrack) + 1
+    return (sector, track)
+
 class DirEntry:
     def __init__(self, activity=ACT_NEVER_USED, name="", ext="", invisible=False, system=False, writeProtect=False, form=False, length=0, track=0, sector=0):
         self.name = name
@@ -184,6 +189,28 @@ class LinkList:
             sector = blk.nextSec
             track = blk.nextTrack
 
+class Bitmap:
+    def __init__(self, sectorsPerTrack=26):
+        self.inuse = []
+        self.sectorsPerTrack = sectorsPerTrack
+
+    def load(self, buffer):
+        offset = secOffset(2, 2, self.sectorsPerTrack)  # always starts at sector 2 on track 2 and is contiguous
+        sectors = self.sectorsPerTrack * 77
+        j = offset
+        for i in range(0, sectors-1):
+            if (i % 8) == 0:
+                b = buffer[j]
+                j += 1
+            self.inuse.append(b & 0x01)
+            b = b >> 1
+
+    def printFree(self):
+        for i in range(0, len(self.inuse)):
+            if not self.inuse[i]:
+                (sec, track) = secNumberToSecTrack(i+1, self.sectorsPerTrack)
+                print("Sector %d Track %d" % (sec, track))
+
 class Disk:
     def __init__(self, fileName=None, sectorsPerTrack=26):
         self.fileName = fileName
@@ -198,6 +225,7 @@ class Disk:
             else:
                 raise("Invalid disk image size")
             self.loadDir()
+            self.loadBitmap()
     
     def loadDir(self):
         dirLinks = LinkList(1,1, self.sectorsPerTrack)
@@ -209,6 +237,10 @@ class Disk:
                     offset = secOffset(link.sector, link.track, self.sectorsPerTrack)
                     sectors.append(self.contents[offset:offset+128])
             self.dir.fromSectors(sectors)
+
+    def loadBitmap(self):
+        self.bitmap = Bitmap(self.sectorsPerTrack)
+        self.bitmap.load(self.contents)
 
     def getFile(self, name):
         f = self.dir.find(name)
@@ -224,6 +256,17 @@ class Disk:
                     data += self.contents[offset:offset+128]
         data = data[:f.length]
         return data
+    
+    def listBlocks(self, name):
+        f = self.dir.find(name)
+        if not f:
+            return
+        links = LinkList(f.sector, f.track, self.sectorsPerTrack)
+        links.load(self.contents)
+        for linkBlock in links.linkBlocks:
+            for link in linkBlock.links:
+                if link.track != 0:
+                    print("Sector %d Track %d" % (link.sector, link.track))
 
 def checkLoaded(f):
     if f is None:
@@ -254,7 +297,7 @@ def main():
     cmd = args[0]
     args=args[1:]
 
-    if (cmd in ["hexdump", "extract"]):
+    if (cmd in ["hexdump", "extract", "blocks"]):
         if len(args)==0:
             print("missing filename")
             sys.exit(-1)
@@ -269,6 +312,10 @@ def main():
         f = disk.getFile(args[0])
         checkLoaded(f)
         open(args[0], "wb").write(f)
+    elif (cmd=="free"):
+        disk.bitmap.printFree()
+    elif (cmd=="blocks"):
+        disk.listBlocks(args[0])
 
 if __name__ == "__main__":
     main()
