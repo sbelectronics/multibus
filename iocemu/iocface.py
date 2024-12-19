@@ -4,6 +4,7 @@ import select
 import sys
 import time
 import RPi.GPIO as IO
+import iocdirect.iocdirect_ext
 
 PIN_D0=16
 PIN_D1=17
@@ -22,6 +23,8 @@ PIN_A0 =5
 PIN_CLKF0=6
 PIN_SETF1=12
 PIN_RESETF1=13
+
+PIN_HRESET=7
 
 FLAG_OBF=1
 FLAG_IBF=2
@@ -81,16 +84,33 @@ CMDTABLE = {
     CMD_RDSTS:  "RDSTS"
 }
 
+CRT_PRESENT = 0x01
+
 KBD_READY =   0x01
 KBD_PRESENT = 0x02
 KBD_ILLEGAL = 0x40
 KBD_TIMEOUT = 0x80
 
-DISK_READY =    0x02
+DISK_READY =    0x03  # manual says 0x02 but code looks for 0x01
 DISK_COMPLETE = 0x04
-DISK_PRESET =   0x08
+DISK_PRESENT =  0x08
 DISK_ILLEGAL_DATA = 0x20
 DISK_ILLEGAL_STATUS = 0x40
+
+DISK_NOP    = 0
+DISK_SEEK   = 1
+DISK_FORMAT = 2
+DISK_RECAL  = 3
+DISK_READ   = 4
+DISK_VERIFY = 5
+DISK_WRITE  = 6
+DISK_WRITE_DEL = 7
+
+LOG_ERROR = 0
+LOG_WARN = 1
+LOG_INFO = 2
+LOG_DEBUG = 3
+LOG_CRAZYDEBUG = 4
 
 def isOBF(flags):
     return (flags&FLAG_OBF)!=0
@@ -101,10 +121,27 @@ def isIBF(flags):
 def isCMD(flags):
     return (flags&FLAG_CD)!=0
 
+
+class ResetException(Exception):
+    def __init__(self, message='Reset'):
+        super(ResetException, self).__init__(message)
+
 class IOCInterface:
-    def __init__(self, verbose):
-        self.verbose = verbose
+    def __init__(self, verbosity):
+        self.verbosity = verbosity
         self.keyTimeout = False
+        self.enableDisk = False
+        self.diskComplete = False
+        self.noKeyboard = False
+        self.noCRT = False
+        self.verbosityOverride = None
+        self.iopbByte = 0
+        self.iters = 0
+        self.keyWait = []
+
+        self.ext = iocdirect.iocdirect_ext
+        if not self.ext.init():
+            sys.exit(-1)
 
         IO.setmode(IO.BCM)
         IO.setwarnings(False) # turn off warnings about reusing the pins
@@ -119,6 +156,7 @@ class IOCInterface:
         IO.setup(PIN_CLKF0, IO.OUT)
         IO.setup(PIN_SETF1, IO.OUT)
         IO.setup(PIN_RESETF1, IO.OUT)
+        IO.setup(PIN_HRESET, IO.OUT)
 
         IO.output(PIN_INIT, 1)
         IO.output(PIN_SELDBOUT, 1)
@@ -130,8 +168,11 @@ class IOCInterface:
         IO.output(PIN_SETF1, 1)
         IO.output(PIN_RESETF1, 1)
 
+        IO.output(PIN_HRESET, 1)
+
     def cleanup(self):
-        pass # IO.cleanup()
+        # make sure pigpio is cleaned up
+        self.ext.cleanup()
 
     def setDataInput(self):
         for datapin in DATAPINS:
@@ -145,6 +186,10 @@ class IOCInterface:
         IO.output(PIN_INIT,0)
         IO.output(PIN_INIT,1)
 
+    def hreset(self):
+        IO.output(PIN_HRESET,0)
+        IO.output(PIN_HRESET,1)
+
     def printFlags(self):
         flags = self.readFlags()
         print("  OBF=%d IBF=%d F0=%d CD=%d" % ((flags&FLAG_OBF)!=0, (flags&FLAG_IBF)!=0, (flags&FLAG_F0)!=0, (flags&FLAG_CD)!=0))
@@ -157,18 +202,23 @@ class IOCInterface:
         self.printFlags()
         self.printDBIN()
         
-    def log(self, msg):
-        if self.verbose:
+    def log(self, level, msg):
+        verbosity = self.verbosity
+        if self.verbosityOverride is not None:
+            verbosity = self.verbosityOverride
+        if level <= verbosity:
             print(msg, file=sys.stderr)
 
     def error(self, msg):
-        print(msg, file=sys.stderr)
+        self.log(LOG_ERROR, msg)
 
     def yieldCPU(self):
-        pass
+        self.iters += 1
+        if (self.iters % 1000)==0:
+            self.keyReady()  # in case system is hung, occasionally check for control keys        
 
     def clkDelay(self):
-        pass
+        self.ext.clk_delay()
 
     def select(self, reg):
         if reg==REG_DBOUT:
@@ -189,6 +239,7 @@ class IOCInterface:
             IO.output(PIN_SELSTAT, 1)
         else:
             raise Exception("invalid register")
+        self.clkDelay()
 
     def readInput(self):
         d = 0
@@ -205,28 +256,44 @@ class IOCInterface:
             d = d >> 1
     
     def readFlags(self):
-        self.select(REG_STAT)
-        result = self.readInput()
-        self.select(REG_NONE)
-        return result
+        return self.ext.read_flags()
+        #self.select(REG_STAT)
+        #lastResult = None
+        #while True:
+        #    # be wary of catching the flags in a transient state
+        #    # maybe we get the IBF while the C/D is still settling...
+        #    result = self.readInput()
+        #    if result==lastResult:
+        #        break
+        #    lastResult = result
+        #self.select(REG_NONE)
+        #return result
     
     def readDBIN(self):
-        self.select(REG_DBIN)
-        result = self.readInput()
-        self.select(REG_NONE)
-        return result
+        return self.ext.read_dbin()
+        #self.select(REG_DBIN)
+        #result = self.readInput()
+        #self.select(REG_NONE)
+        #return result
     
     def writeDBOUT(self, d):
-        self.select(REG_NONE)
-        self.setA0(0)
-        self.setDataOutput()
-        self.writeOutput(d)
-        self.select(REG_DBOUT)
-        self.select(REG_NONE)
-        self.setDataInput()
+        self.ext.write_dbout(d)
+        #self.select(REG_NONE)
+        #self.setA0(0)
+        #self.setDataOutput()
+        #self.writeOutput(d)
+        #self.select(REG_DBOUT)
+        #self.select(REG_NONE)
+        #self.setDataInput()
     
     def setA0(self, value):
         IO.output(PIN_A0, value)
+
+    def resetOBF(self):
+        self.setA0(1)           # writing to DBOUT with A0=1 clears the OBF
+        self.select(REG_DBOUT)
+        self.clkDelay()
+        self.select(REG_NONE)
     
     def setF0(self, value):
         self.setA0(value)
@@ -243,7 +310,7 @@ class IOCInterface:
                     self.error("unexpected command byte: %2X" % cmd)
                 else:
                     data = self.readDBIN()
-                    self.log("  got data byte: %2X" % data)
+                    self.log(LOG_DEBUG,"  got data byte: %2X" % data)
                     return data
             self.yieldCPU()
 
@@ -251,18 +318,18 @@ class IOCInterface:
         while True:
             flags = self.readFlags()
             if not isOBF(flags):
-                self.log("  put data byte: %2X" % value)
+                self.log(LOG_DEBUG,"  put data byte: %2X" % value)
                 self.writeDBOUT(value)
                 return
             self.yieldCPU()
 
     def setCommandResultAndResetF0(self, value):
-        self.log("command complete with result %2X" % value)
+        self.log(LOG_INFO,"  command complete with result %2X" % value)
         self.setF0(0)   # XXX should we do this before or after we put the output byte?
         self.putOutputByte(value)
 
     def nilCommandResultAndResetF0(self):
-        self.log("command complete with no result")
+        self.log(LOG_INFO,"  command complete with no result")
         self.setF0(0)
 
     def watch(self):
@@ -276,15 +343,56 @@ class IOCInterface:
                 lastFlags = flags
             else:
                 self.yieldCPU()
+    
+    def diskList(self):
+        diskdict = {}
+        ch ='A'
+        lines = open("disk.lst","r").readlines()
+        for line in lines:
+            line = line.strip()
+            print("%c: %s" % (ch, line))
+            diskdict[ch] = line
+            ch = chr(ord(ch)+1)
+        while not self.keyReady():
+            self.yieldCPU()
+        v = chr(self.keyGet()).upper()
+        if v in diskdict:
+            self.disk = diskdict[v]
+            print("disk selected: %s" % self.disk)
+        else:
+            print("invalid disk selection")
 
     def keyReady(self):
-        return self.terminal.keyReady()
-    
-    def keyGet(self):
-        if self.keyReady():
+        if self.terminal.keyReady():
             v=ord(self.terminal.keyGet())
-            if v==0x0A:
+            if v==(ord('D')-ord('A')+1):
+                self.diskList()
+                return False
+            elif v==(ord('W')-ord('A')+1):
+                print("<hreset>")
+                self.hreset()
+                self.reset()
+                self.keyWait = []
+                raise ResetException()
+            elif v==(ord('T')-ord('A')+1): # verbose ("talky")
+                self.verbosity += 1
+                return False
+            elif v==(ord('U')-ord('A')+1): # quiet ("un-talky")
+                self.verbosity -= 1
+                return False
+            if v==0x0A:  # translate newline to CR
                 v=0x0D
+            elif v==(ord('X')-ord('A')+1):  # translate CTRL-X to CTRL-Z
+                v=(ord('Z')-ord('A')+1)
+            self.keyWait.append(v)
+            return True
+            
+        return self.keyWait
+
+    def keyGet(self):
+        if self.keyWait:
+            v = self.keyWait[0]
+            self.keyWait = self.keyWait[1:]
             return v
         else:
             return None
@@ -304,7 +412,11 @@ class IOCInterface:
         self.setCommandResultAndResetF0(value)
 
     def handleCRTS(self):
-        self.setCommandResultAndResetF0(0x01)
+        if self.noCRT:
+            v = 0
+        else:
+            v = CRT_PRESENT
+        self.setCommandResultAndResetF0(v)
 
     def handleCRTC(self):
         self.setF0(0) # reset F0 before getting input byte
@@ -323,26 +435,125 @@ class IOCInterface:
             self.setCommandResultAndResetF0(value)
 
     def handleKSTC(self):
-        v = KBD_PRESENT
-        if self.keyReady():
-            v = v | KBD_READY
-        if self.keyTimeout:
-            v = v | KBD_TIMEOUT
-            self.keyTimeout = False
+        if self.noKeyboard:
+            v = 0
+        else:
+            v = KBD_PRESENT
+            if self.keyReady():
+                v = v | KBD_READY
+            if self.keyTimeout:
+                v = v | KBD_TIMEOUT
+                self.keyTimeout = False
         self.setCommandResultAndResetF0(v)
 
     def handleRDSTS(self):
         v = 0
-        # TODO: set DISK_READY once implemented
-        # TODO: deal with the ready and complete bits too...
+        if self.disk is not None:
+            v = v | DISK_READY | DISK_PRESENT
+        if self.diskComplete:
+            v = v | DISK_COMPLETE
         self.setCommandResultAndResetF0(v)
+
+    def handleRRSTS(self):
+        self.diskComplete = False
+        # we never error
+        self.setCommandResultAndResetF0(0)
+
+    def handleWPBC(self):
+        self.setF0(0) # reset F0 before getting input byte
+        self.iopbChannel = self.getInputByte()
+        self.iopbByte = 1     
+        self.nilCommandResultAndResetF0()
+
+    def handleWPBCC(self):
+        self.setF0(0) # reset F0 before getting input byte
+        if (self.iopbByte == 1):
+            self.iopbInstruction = self.getInputByte() & 0x07;
+        elif (self.iopbByte == 2):
+            self.iopbSectorCount = self.getInputByte() & 0x1F;
+            if self.iopbSectorCount==0:
+                self.iopbSectorCount = 1  # sector count of 0 should be interpreted as 1 sector
+        elif (self.iopbByte == 3):
+            self.iobpTrack = self.getInputByte() & 0x7F;
+        elif (self.iopbByte == 4):
+            self.iopbSectorAddress = self.getInputByte() & 0x1F;
+            if self.iopbSectorAddress==0:
+                self.iopbSectorAddress = 1   # valid sectors are 1-26, so just in case someone passes a 0
+            else:
+                self.iopbSectorAddress -= 1  # convert to 0-based
+            self.diskExecute()        
+
+        self.iopbByte += 1
+        self.nilCommandResultAndResetF0()
+
+    def diskRead(self):
+        f = open(self.disk, "rb")
+        try:
+            f.seek((self.iobpTrack*26 + self.iopbSectorAddress)*128)
+            # read the file into the disk buffer
+
+            self.diskBuffer = f.read(self.iopbSectorCount*128)
+        finally:
+            f.close()
+        self.diskComplete = True
+
+    def diskWrite(self):
+        f = open(self.disk, "r+b")
+        try:
+            f.seek((self.iobpTrack*26 + self.iopbSectorAddress)*128)
+            # write the disk buffer to the file
+            f.write(bytearray(self.diskBuffer))
+        finally:
+            f.close()
+        self.diskComplete = True
+
+    def diskExecute(self):
+        self.diskComplete = False
+        if (self.iopbInstruction == DISK_NOP):
+            self.diskComplete = True
+        elif (self.iopbInstruction == DISK_SEEK):
+            self.diskComplete = True
+        elif (self.iopbInstruction == DISK_FORMAT):
+            self.diskComplete = True
+        elif (self.iopbInstruction == DISK_RECAL):
+            self.diskComplete = True
+        elif (self.iopbInstruction == DISK_READ):
+            self.diskRead()
+        elif (self.iopbInstruction == DISK_VERIFY):
+            self.diskComplete = True
+        elif (self.iopbInstruction == DISK_WRITE):
+            self.diskWrite()
+        elif (self.iopbInstruction == DISK_WRITE_DEL):
+            self.diskComplete = True
+        else:
+            self.error("  unimplemented disk instruction: %d" % self.iopbInstruction)
+            self.diskComplete = True
+
+    def handleRDC(self):
+        self.setF0(0)
+        for i in range(0, len(self.diskBuffer)):
+            self.putOutputByte(self.diskBuffer[i])
+        self.diskComplete = False
+
+    def handleWBC(self):
+        self.setF0(0)
+        sectors = self.getInputByte()
+        self.diskBuffer = []
+        for i in range(0, sectors*128):
+            self.diskBuffer.append(self.getInputByte())
 
     def handleCommand(self, cmdreg):
         cmd = cmdreg&0x1F
         int = (cmdreg&0x80)!=0
 
+        if (self.verbosity<LOG_CRAZYDEBUG) and (cmd in [CMD_KSTC, CMD_KEYC, CMD_CRTC, CMD_CRTS]):
+            # this level of debugging is insane
+            self.verbosityOverride = LOG_WARN
+        else:
+            self.verbosityOverride = None
+
         cmdName = CMDTABLE.get(cmd, "UUNKNOWN")
-        self.log("command: %s%s" % (cmdName, " INT" if int else ""))
+        self.log(LOG_INFO, "command: %s%s" % (cmdName, " INT" if int else ""))
 
         self.wantInt = int
 
@@ -362,26 +573,48 @@ class IOCInterface:
             self.handleKSTC()
         elif cmd==CMD_RDSTS:
             self.handleRDSTS()
+        elif cmd==CMD_RRSTS:
+            self.handleRRSTS()            
+        elif cmd==CMD_WPBC:
+            self.handleWPBC()
+        elif cmd==CMD_WPBCC:
+            self.handleWPBCC()
+        elif cmd==CMD_RDBC:
+            self.handleRDC()
+        elif cmd==CMD_WDBC:
+            self.handleWBC()
         else:
             self.error("  unimplemented command: %s" % cmdName)
             self.nilCommandResultAndResetF0()
 
-        self.log("  command complete")
+        self.verbosityOverride = None
+
     
-    def run(self, terminal, purge=False):
+    def run(self, terminal, noKeyboard=False, disk=None, purge=False):
+        print("<CTRL-D>: DISK  <CTRL-T> Verbose  <CTRL-U> Quiet  <CTRL-W>: RESET")
+        print("<CTRL-X>: EOF")
+        print("<ioc started>")
+        print("")
         self.terminal = terminal
-        self.readDBIN()  # reset will leave IBF set, so clear it
-        self.setF0(0)    # reset will leave F0 set, so clear it
-        if (purge):
-            self.writeDBOUT(0)
+        self.disk = disk
+        self.noKeyboard = noKeyboard
         while True:
-            flags = self.readFlags()
-            if isIBF(flags):
-                self.setF0(1)  # mark busy while we check for command
-                v = self.readDBIN()
-                if isCMD(flags):
-                    self.handleCommand(v)
-                else:
-                    self.error("out of band data byte: %2X" % v)
-                    self.setF0(0)  # there was no command, so clear busy flag
-            self.yieldCPU()
+            try:
+                self.resetOBF()  # reset will leave OBF set, so clear it
+                self.readDBIN()  # reset will leave IBF set, so clear it
+                self.setF0(0)    # reset will leave F0 set, so clear it       
+                if (purge):
+                    self.writeDBOUT(0)
+                while True:
+                    flags = self.readFlags()
+                    if isIBF(flags):
+                        self.setF0(1)  # mark busy while we check for command
+                        v = self.readDBIN()
+                        if isCMD(flags):
+                            self.handleCommand(v)
+                        else:
+                            self.error("out of band data byte: %2X" % v)
+                            self.setF0(0)  # there was no command, so clear busy flag
+                    self.yieldCPU()
+            except ResetException:
+                pass
