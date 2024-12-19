@@ -18,14 +18,14 @@ Pin 6  = A4;
 Pin 7  = A5;
 Pin 8  = A6;
 Pin 9  = A7;
-Pin 10 = NC10;
+Pin 10 = !PIRESETI;
 Pin 11 = !MPST01;
 Pin 13 = !MPST23;
 
 /* Outputs:  */
 Pin 23 = RESETO;
 Pin 22 = !IOSEL;
-Pin 21 = NC21;
+Pin 21 = !PIRESETO;
 Pin 20 = NC22;
 Pin 19 = !INT_CS;
 Pin 18 = !IOC_CS;
@@ -113,4 +113,8 @@ INT_CS = _INT_CS;
 /* NOTE: IOC_CS does not use IOSEL as it is connected directly to the inverted data bus */
 
 IOSEL = _MCS0 # _MCS1 # _MCS2 # _MCS3 # _INT_CS;
+
+/* open collector output driver for pi-based reset */
+PIRESETO = 'b'1;
+PIRESETO.OE = PIRESETI;
 
