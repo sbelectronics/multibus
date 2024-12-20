@@ -17,11 +17,12 @@ scrunch.rom: monitor.rom
 
 monitor.patch:
 	cp ../mon80-1.3/monIIv13.asm monIIv13-orig.asm
-	cp ../../multibus-private/mon80-scott-pioc/monitor.asm monIIv13-scott.asm
+	cp monitor.asm monIIv13-scott.asm
 	diff -Naur monIIv13-orig.asm monIIv13-scott.asm > monitor.patch || true
 	rm monIIv13-orig.asm
 	rm monIIv13-scott.asm
 
 clean:
-	rm -f *.hex *.rom
+	rm -f *.hex *.rom *.patch
+
 
