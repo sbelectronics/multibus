@@ -19,6 +19,11 @@ FLAG_SYSTEM = 2
 FLAG_WRITE_PROTECT = 4
 FLAG_FORM = 0x80
 
+flagMap = {"I": FLAG_INVISIBLE,
+        "S": FLAG_SYSTEM,
+        "W": FLAG_WRITE_PROTECT,
+        "F": FLAG_FORM}
+
 def hexdump(s):
     for i in range(0,len(s),16):
         print("{:04x}: ".format(i), end="")
@@ -414,7 +419,7 @@ class Disk:
     def deleteFile(self, name):
         f = self.dir.find(name)
         if not f:
-            return
+            return None
         links = LinkList(f.sector, f.track, self.sectorsPerTrack)
         links.load(self.contents)
         for linkBlock in links.linkBlocks:
@@ -426,6 +431,21 @@ class Disk:
         self.saveDir()
         self.saveBitmap()
         return result
+    
+    def setAttr(self, name, flag, value):
+        f = self.dir.find(name)
+        if not f:
+            return None
+        if flag&FLAG_INVISIBLE:
+            f.invisible = value
+        if flag&FLAG_SYSTEM:
+            f.system = value
+        if flag&FLAG_WRITE_PROTECT:
+            f.writeProtect = value
+        if flag&FLAG_FORM:
+            f.form = value
+        self.saveDir()
+        return f
     
     def addFile(self, name, data):
         if "." in name:
@@ -500,6 +520,22 @@ def checkFound(f):
         print("file not found")
         sys.exit(-1)
 
+def help():
+    print("""Syntax: isistool.py -f <filename> COMMAND <ARG>
+
+Commands:
+* DIR ... display directory
+* SUMS ... directory with shasum display
+* HEXDUMP <FN> ... dump hex contents of fdile
+* GET <FN> ... get file from ISIS disk and store in local file
+* PUT <FN> ... get local file and write to isis disk
+* ATTRIB <FN> <ATTR>  ... set file attributes
+* VERIFY <FN> <SUM> ... verify that filename has the right sum
+* FREE ... display list of free blocks
+* BLOCKS <fn> ... display the list of blocks occupied by file
+* CHKDSK ... check disk integrity by verifying free bitmap matches allocated block lists.
+""")
+
 def main():
     parser = OptionParser(usage="supervisor [options] command",
             description="Commands: ...")
@@ -517,6 +553,7 @@ def main():
 
     if len(args)==0:
         print("missing command")
+        help()
         sys.exit(-1)
 
     disk = Disk(fileName = options.filename)
@@ -524,7 +561,7 @@ def main():
     cmd = args[0].lower()
     args=args[1:]
 
-    if (cmd in ["hexdump", "extract", "put", "add", "get", "blocks", "remove"]):
+    if (cmd in ["hexdump", "extract", "put", "add", "get", "blocks", "remove", "attrib", "verify"]):
         if len(args)==0:
             print("missing filename")
             sys.exit(-1)
@@ -556,7 +593,25 @@ def main():
     elif (cmd in ["add", "put"]):
         data = open(args[0], "rb").read()
         disk.addFile(args[0], data)
-        #disk.listBlocks(args[0])
+        disk.chkdsk()
+        disk.save()
+    elif (cmd=="attrib"):
+        fn = args[0]
+        attrs = args[1:]
+        for attr in attrs:
+            attr = attr.upper()
+            if attr[:1] not in flagMap:
+                print("unknown attribute. should be one of I, S, W, F")
+                sys.exit(-1)
+            if attr[1:] == "+":
+                f = disk.setAttr(fn, flagMap[attr[:1]], True)
+                checkFound(f)
+            elif attr[1:] == "-":
+                f = disk.setAttr(fn, flagMap[attr[:1]], False)
+            else:
+                print("attribute should end with + or -. For example W+ or I-")
+                sys.exit(-1)
+        disk.saveDir()
         disk.chkdsk()
         disk.save()
     elif (cmd=="free"):
@@ -565,8 +620,12 @@ def main():
         disk.listBlocks(args[0])
     elif (cmd=="chkdsk"):
         disk.chkdsk()
+    elif (cmd=="help"):
+        help()
     else:
-        raise Exception("Unknown command")
+        print("unknown command: %s" % cmd)
+        help()
+        sys.exit(-1)
 
 if __name__ == "__main__":
     main()
