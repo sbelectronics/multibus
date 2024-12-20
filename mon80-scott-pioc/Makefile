@@ -15,6 +15,13 @@ scrunch.rom: monitor.rom
 	dd if=/dev/zero of=scrunch.rom bs=1 count=1280 oflag=append conv=notrunc 
 	dd if=monitor.rom of=scrunch.rom bs=1 skip=4096 oflag=append conv=notrunc 
 
+monitor.patch:
+	cp ../mon80-1.3/monIIv13.asm monIIv13-orig.asm
+	cp ../../multibus-private/mon80-scott-pioc/monitor.asm monIIv13-scott.asm
+	diff -Naur monIIv13-orig.asm monIIv13-scott.asm > monitor.patch || true
+	rm monIIv13-orig.asm
+	rm monIIv13-scott.asm
+
 clean:
 	rm -f *.hex *.rom
 
