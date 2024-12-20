@@ -1,9 +1,18 @@
+#!/usr/bin/env python3
+
+# isistool.py
+# http://www.smbaker.com/
+#
+# a tool for manipulating ISIS-II disk images
+
 from optparse import OptionParser
 import sys
 import struct
+import hashlib
 
 ACT_OPEN = 0x00
 ACT_NEVER_USED = 0x7F
+ACT_DELETED = 0xFF
 
 FLAG_INVISIBLE = 1
 FLAG_SYSTEM = 2
@@ -34,8 +43,11 @@ def strip(s):
         s = s[:-1]
     return s
 
+def secTrackToSecNumber(sector, track, sectorsPerTrack):
+    return (track * sectorsPerTrack) + sector - 1
+
 def secOffset(sector, track, sectorsPerTrack):
-    return (track * sectorsPerTrack + sector - 1) * 128
+    return secTrackToSecNumber(sector, track, sectorsPerTrack) * 128
 
 def secNumberToSecTrack(secnum, sectorsPerTrack):
     track = secnum // sectorsPerTrack
@@ -43,8 +55,9 @@ def secNumberToSecTrack(secnum, sectorsPerTrack):
     return (sector, track)
 
 class DirEntry:
-    def __init__(self, activity=ACT_NEVER_USED, name="", ext="", invisible=False, system=False, writeProtect=False, form=False, length=0, track=0, sector=0):
+    def __init__(self, activity=ACT_NEVER_USED, name="", ext="", invisible=False, system=False, writeProtect=False, form=False, length=0, sector=0, track=0):
         self.name = name
+        self.ext = ext
         self.invisible = invisible
         self.system = system
         self.writeProtect = writeProtect
@@ -54,7 +67,7 @@ class DirEntry:
         self.track = track
         self.sector = sector
 
-    def pack(self, buffer):
+    def pack(self):
         flags = 0
         if self.invisible:
             flags |= FLAG_INVISIBLE
@@ -66,10 +79,12 @@ class DirEntry:
             flags |= FLAG_FORM
         datablocks = self.length // 128
         leftover = self.length % 128
+        if (leftover!=0):
+            datablocks += 1
         packed = struct.pack("B6s3sBBHBB",
                     self.activity,
-                    self.name,
-                    self.ext,
+                    self.name.encode(encoding="utf-8"),
+                    self.ext.encode(encoding="utf-8"),
                     flags,
                     leftover,
                     datablocks,
@@ -85,9 +100,12 @@ class DirEntry:
         self.system = flags & FLAG_SYSTEM
         self.writeProtect = flags & FLAG_WRITE_PROTECT
         self.form = flags & FLAG_FORM
-        self.length = (datablocks-1) * 128 + leftover
+        if (datablocks == 0):
+            self.length = 0
+        else:
+            self.length = (datablocks-1) * 128 + leftover
 
-    def printEntry(self):
+    def printEntry(self, extra=""):
         if self.invisible:
             inv = "I"
         else:
@@ -104,7 +122,9 @@ class DirEntry:
             form = "F"
         else:
             form = " "
-        print("%-6s %-3s %c%c%c%c %6d" % (self.name, self.ext, inv, sys, wp, form, self.length))
+        if extra:
+            extra = " " + extra
+        print("%-6s %-3s %c%c%c%c %6d %s" % (self.name, self.ext, inv, sys, wp, form, self.length, extra))
 
 class Dir:
     def __init__(self):
@@ -149,6 +169,24 @@ class Dir:
             if (entry.name.lower() == name.lower()) and (entry.ext.lower() == ext.lower()):
                 return entry
         return None
+    
+    def remove(self, name):
+        if "." in name:
+            (name, ext) = name.split(".",1)
+        else:
+            ext=""
+        for entry in self.entries:
+            if (entry.name.lower() == name.lower()) and (entry.ext.lower() == ext.lower()):
+                entry.activity = ACT_DELETED
+                return entry
+        return None
+    
+    def add(self, entry):
+        for i in range(0, len(self.entries)):
+            if self.entries[i].activity in [ACT_NEVER_USED, ACT_DELETED]:
+                self.entries[i] = entry
+                return
+        raise Exception("No free space in dir")
 
 class Link:
     def __init__(self, sector, track):
@@ -156,7 +194,9 @@ class Link:
         self.track = track
 
 class LinkBlock:
-    def __init__(self, prevSec=0, prevTrack=0, nextSec=0, nextTrack=0):
+    def __init__(self, sector=0, track=0, prevSec=0, prevTrack=0, nextSec=0, nextTrack=0):
+        self.sector = sector
+        self.track = track
         self.prevSec = prevSec
         self.prevTrack = prevTrack
         self.nextSec = nextSec
@@ -171,6 +211,26 @@ class LinkBlock:
         for i in range(0,62):
             self.links[i] = Link(buffer[i*2], buffer[i*2+1])
 
+    def pack(self):
+        packed = struct.pack("BBBB", self.prevSec, self.prevTrack, self.nextSec, self.nextTrack)
+        for link in self.links:
+            packed += struct.pack("BB", link.sector, link.track)
+        return packed
+
+    def isFull(self):
+        for link in self.links:
+            if link.track == 0:
+                return False
+        return True
+    
+    def addLink(self, sector, track):
+        for link in self.links:
+            if link.track == 0:
+                link.sector = sector
+                link.track = track
+                return
+        raise("Link block full")
+
 class LinkList:
     def __init__(self, sector=0, track=0, sectorsPerTrack=26):
         self.linkBlocks = []
@@ -183,33 +243,91 @@ class LinkList:
         track = self.track
         while (track != 0):
             offset = secOffset(sector, track, self.sectorsPerTrack)
-            blk = LinkBlock()
+            blk = LinkBlock(sector, track)
             blk.unpack(buffer[offset:])
             self.linkBlocks.append(blk)
             sector = blk.nextSec
             track = blk.nextTrack
 
+    def save(self, buffer):
+        for blk in self.linkBlocks:
+            offset = secOffset(blk.sector, blk.track, self.sectorsPerTrack)
+            buffer[offset:offset+128] = blk.pack()
+
+    def addLinkBlock(self, bitmap):
+        (sector, track) = bitmap.getFirstFree()
+        blk = LinkBlock(sector, track)
+        if self.linkBlocks:
+            lastBlock = self.linkBlocks[-1]
+            lastBlock.nextSec = sector
+            lastBlock.nextTrack = track
+            blk.prevSec = lastBlock.sector
+            blk.prevTrack = lastBlock.track
+        else:
+            self.sector = sector
+            self.track = track
+        self.linkBlocks.append(blk)
+
+    def makeSpace(self, bitmap):
+        if (len(self.linkBlocks) == 0) or (self.linkBlocks[-1].isFull()):
+            self.addLinkBlock(bitmap)
+
+    def addSector(self, sector, track):
+        self.linkBlocks[-1].addLink(sector, track)
+
 class Bitmap:
     def __init__(self, sectorsPerTrack=26):
         self.inuse = []
         self.sectorsPerTrack = sectorsPerTrack
+        for i in range(0, self.sectorsPerTrack * 77):
+            self.inuse.append(False)
 
     def load(self, buffer):
         offset = secOffset(2, 2, self.sectorsPerTrack)  # always starts at sector 2 on track 2 and is contiguous
         sectors = self.sectorsPerTrack * 77
         j = offset
-        for i in range(0, sectors-1):
+        self.inuse = []
+        for i in range(0, sectors):
             if (i % 8) == 0:
                 b = buffer[j]
                 j += 1
-            self.inuse.append(b & 0x01)
-            b = b >> 1
+            self.inuse.append((b & 0x80)!=0)
+            b = b << 1
+
+    def save(self, buffer):
+        offset = secOffset(2, 2, self.sectorsPerTrack)  # always starts at sector 2 on track 2 and is contiguous
+        sectors = self.sectorsPerTrack * 77
+        j = offset
+        for i in range(0, sectors):
+            if (i % 8) == 0:
+                buffer[j] = 0
+
+            if self.inuse[i]:
+                buffer[j] = buffer[j] | (1 << (7 - (i % 8)))
+            
+            if (i % 8) == 7:
+                j += 1
 
     def printFree(self):
         for i in range(0, len(self.inuse)):
             if not self.inuse[i]:
-                (sec, track) = secNumberToSecTrack(i+1, self.sectorsPerTrack)
+                (sec, track) = secNumberToSecTrack(i, self.sectorsPerTrack)
                 print("Sector %d Track %d" % (sec, track))
+
+    def freeSector(self, sector, track):
+        secNum = secTrackToSecNumber(sector, track, self.sectorsPerTrack)
+        self.inuse[secNum] = False
+
+    def useSector(self, sector, track):
+        secNum = secTrackToSecNumber(sector, track, self.sectorsPerTrack)
+        self.inuse[secNum] = True
+
+    def getFirstFree(self):
+        for i in range(0, len(self.inuse)):
+            if not self.inuse[i]:
+                self.inuse[i] = True
+                return secNumberToSecTrack(i, self.sectorsPerTrack)
+        raise Exception("no free space in bitmap")
 
 class Disk:
     def __init__(self, fileName=None, sectorsPerTrack=26):
@@ -218,6 +336,7 @@ class Disk:
         self.dir = Dir()
         if fileName is not None:
             self.contents = open(fileName, "rb").read()
+            self.contents = bytearray(self.contents)
             if len(self.contents) == 256256:
                 pass
             elif len(self.contents) == 512512:
@@ -226,8 +345,14 @@ class Disk:
                 raise("Invalid disk image size")
             self.loadDir()
             self.loadBitmap()
-    
+
+    def save(self, fileName=None):
+        if fileName is None:
+            fileName = self.fileName
+        open(fileName, "wb").write(self.contents)
+
     def loadDir(self):
+        self.dir = Dir()
         dirLinks = LinkList(1,1, self.sectorsPerTrack)
         dirLinks.load(self.contents)
         for linkBlock in dirLinks.linkBlocks:
@@ -238,14 +363,25 @@ class Disk:
                     sectors.append(self.contents[offset:offset+128])
             self.dir.fromSectors(sectors)
 
+    def saveDir(self):
+        dirLinks = LinkList(1,1, self.sectorsPerTrack)
+        dirLinks.load(self.contents)
+        sectors = self.dir.toSectors()
+        for linkBlock in dirLinks.linkBlocks:
+            for link in linkBlock.links:
+                if link.track != 0:
+                    offset = secOffset(link.sector, link.track, self.sectorsPerTrack)
+                    self.contents[offset:offset+128] = sectors[0]
+                    sectors = sectors[1:]
+
     def loadBitmap(self):
         self.bitmap = Bitmap(self.sectorsPerTrack)
         self.bitmap.load(self.contents)
 
-    def getFile(self, name):
-        f = self.dir.find(name)
-        if not f:
-            return None
+    def saveBitmap(self):
+        self.bitmap.save(self.contents)
+
+    def getFileDataFromEntry(self, f):
         links = LinkList(f.sector, f.track, self.sectorsPerTrack)
         links.load(self.contents)
         data = b""
@@ -256,6 +392,12 @@ class Disk:
                     data += self.contents[offset:offset+128]
         data = data[:f.length]
         return data
+
+    def getFile(self, name):
+        f = self.dir.find(name)
+        if not f:
+            return None
+        return self.getFileDataFromEntry(f)
     
     def listBlocks(self, name):
         f = self.dir.find(name)
@@ -264,11 +406,96 @@ class Disk:
         links = LinkList(f.sector, f.track, self.sectorsPerTrack)
         links.load(self.contents)
         for linkBlock in links.linkBlocks:
+            print("LINK Block %d %d" % (linkBlock.sector, linkBlock.track))
             for link in linkBlock.links:
                 if link.track != 0:
-                    print("Sector %d Track %d" % (link.sector, link.track))
+                    print("DATA Sector %d Track %d" % (link.sector, link.track))
 
-def checkLoaded(f):
+    def deleteFile(self, name):
+        f = self.dir.find(name)
+        if not f:
+            return
+        links = LinkList(f.sector, f.track, self.sectorsPerTrack)
+        links.load(self.contents)
+        for linkBlock in links.linkBlocks:
+            for link in linkBlock.links:
+                if link.track != 0:
+                    self.bitmap.freeSector(link.sector, link.track)
+            self.bitmap.freeSector(linkBlock.sector, linkBlock.track)
+        result = self.dir.remove(name)
+        self.saveDir()
+        self.saveBitmap()
+        return result
+    
+    def addFile(self, name, data):
+        if "." in name:
+            (name, ext) = name.split(".",1)
+        else:
+            ext = ""
+
+        name = name.upper()
+        ext = ext.upper()
+
+        dataLen = len(data)
+
+        blkList = LinkList(sectorsPerTrack=self.sectorsPerTrack)
+        while data:
+            blkList.makeSpace(self.bitmap)
+            (sector, track) = self.bitmap.getFirstFree()
+            blkList.addSector(sector, track)
+            while (len(data)<128):  # pad data out to a full sector
+                data += b"\0"
+            self.contents[secOffset(sector, track, self.sectorsPerTrack):secOffset(sector, track, self.sectorsPerTrack)+128] = data[:128]
+            data = data[128:]
+
+        entry = DirEntry(ACT_OPEN, name, ext, sector=blkList.sector, track=blkList.track, length=dataLen)
+        self.dir.add(entry)
+
+        blkList.save(self.contents)
+
+        self.saveDir()
+        self.saveBitmap()
+
+    def chkdsk(self):
+        cmap = Bitmap(self.sectorsPerTrack)
+        for entry in self.dir.entries:
+            if entry.activity == ACT_OPEN:
+                links = LinkList(entry.sector, entry.track, self.sectorsPerTrack)
+                links.load(self.contents)
+                for linkBlock in links.linkBlocks:
+                    for link in linkBlock.links:
+                        if link.track != 0:
+                            cmap.useSector(link.sector, link.track)
+                    cmap.useSector(linkBlock.sector, linkBlock.track)
+
+        # T0 is always used
+        for i in range(0, self.sectorsPerTrack):
+            cmap.useSector(i+1, 0)
+
+        # second half of T1 on DD disk should be marked used too
+        for i in range(26, self.sectorsPerTrack):
+            cmap.useSector(i+1, 1)
+
+        failed=False
+        for i in range(0, 77*self.sectorsPerTrack):
+            if cmap.inuse[i] and not self.bitmap.inuse[i]:
+                print("Sector %d Track %d is in use but not marked in bitmap" % secNumberToSecTrack(i, self.sectorsPerTrack))
+                failed=True
+            if not cmap.inuse[i] and self.bitmap.inuse[i]:
+                print("Sector %d Track %d is marked in bitmap but not in use" % secNumberToSecTrack(i, self.sectorsPerTrack))
+                failed=True
+
+        if failed:
+            raise Exception("CHKDSK failed")
+        
+    def sums(self):
+        for entry in self.dir.entries:
+            if entry.activity == ACT_OPEN:
+                data = self.getFileDataFromEntry(entry)
+                sha1 = hashlib.sha1(data).hexdigest()
+                entry.printEntry(extra=sha1)
+
+def checkFound(f):
     if f is None:
         print("file not found")
         sys.exit(-1)
@@ -294,28 +521,52 @@ def main():
 
     disk = Disk(fileName = options.filename)
 
-    cmd = args[0]
+    cmd = args[0].lower()
     args=args[1:]
 
-    if (cmd in ["hexdump", "extract", "blocks"]):
+    if (cmd in ["hexdump", "extract", "put", "add", "get", "blocks", "remove"]):
         if len(args)==0:
             print("missing filename")
             sys.exit(-1)
 
     if (cmd=="dir"):
         disk.dir.printDir()
+    elif (cmd=="sums"):
+        disk.sums()
     elif (cmd=="hexdump"):
         f = disk.getFile(args[0])
-        checkLoaded(f)
+        checkFound(f)
         hexdump(f)
-    elif (cmd=="extract"):
+    elif (cmd in ["extract", "get"]):
         f = disk.getFile(args[0])
-        checkLoaded(f)
+        checkFound(f)
         open(args[0], "wb").write(f)
+    elif (cmd=="verify"):
+        f = disk.getFile(args[0])
+        checkFound(f)        
+        sum = hashlib.sha1(f).hexdigest()
+        if sum != args[1]:
+            print("sha mismatch")
+            sys.exit(-1)
+    elif (cmd=="remove"):
+        f = disk.deleteFile(args[0])
+        checkFound(f)
+        disk.chkdsk()
+        disk.save()
+    elif (cmd in ["add", "put"]):
+        data = open(args[0], "rb").read()
+        disk.addFile(args[0], data)
+        #disk.listBlocks(args[0])
+        disk.chkdsk()
+        disk.save()
     elif (cmd=="free"):
         disk.bitmap.printFree()
     elif (cmd=="blocks"):
         disk.listBlocks(args[0])
+    elif (cmd=="chkdsk"):
+        disk.chkdsk()
+    else:
+        raise Exception("Unknown command")
 
 if __name__ == "__main__":
     main()
