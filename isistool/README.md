@@ -22,6 +22,8 @@ Commands:
 
 * PUT <FN> ... get local file and write to isis disk
 
+* DELETE <FN> ... delete file from ISIS disk
+
 * ATTRIB <FN> <ATTR> ... set or reset attributes (ISWF). Example I+ to set or I- to reset. Separate multiple attributes with spaces.
 
 * VERIFY <FN> <SUM> ... verify that filename has the right sum

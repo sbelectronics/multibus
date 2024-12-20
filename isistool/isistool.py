@@ -5,6 +5,7 @@
 #
 # a tool for manipulating ISIS-II disk images
 
+import os
 from optparse import OptionParser
 import sys
 import struct
@@ -468,7 +469,9 @@ class Disk:
             self.contents[secOffset(sector, track, self.sectorsPerTrack):secOffset(sector, track, self.sectorsPerTrack)+128] = data[:128]
             data = data[128:]
 
-        entry = DirEntry(ACT_OPEN, name, ext, sector=blkList.sector, track=blkList.track, length=dataLen)
+        isisName = os.path.split(name)[1]
+
+        entry = DirEntry(ACT_OPEN, isisName, ext, sector=blkList.sector, track=blkList.track, length=dataLen)
         self.dir.add(entry)
 
         blkList.save(self.contents)
@@ -529,6 +532,7 @@ Commands:
 * HEXDUMP <FN> ... dump hex contents of fdile
 * GET <FN> ... get file from ISIS disk and store in local file
 * PUT <FN> ... get local file and write to isis disk
+* DELETE <FN> ... delete file from ISIS disk
 * ATTRIB <FN> <ATTR>  ... set file attributes
 * VERIFY <FN> <SUM> ... verify that filename has the right sum
 * FREE ... display list of free blocks
@@ -561,7 +565,9 @@ def main():
     cmd = args[0].lower()
     args=args[1:]
 
-    if (cmd in ["hexdump", "extract", "put", "add", "get", "blocks", "remove", "attrib", "verify"]):
+    # extract, addr, and remove are synonyms for get, put, and delete
+
+    if (cmd in ["hexdump", "extract", "put", "add", "get", "blocks", "remove", "delete", "attrib", "verify"]):
         if len(args)==0:
             print("missing filename")
             sys.exit(-1)
@@ -585,7 +591,7 @@ def main():
         if sum != args[1]:
             print("sha mismatch")
             sys.exit(-1)
-    elif (cmd=="remove"):
+    elif (cmd in ["remove", "delete"]):
         f = disk.deleteFile(args[0])
         checkFound(f)
         disk.chkdsk()
