@@ -449,6 +449,8 @@ class Disk:
         return f
     
     def addFile(self, name, data):
+        name = os.path.split(name)[1]
+
         if "." in name:
             (name, ext) = name.split(".",1)
         else:
@@ -469,9 +471,7 @@ class Disk:
             self.contents[secOffset(sector, track, self.sectorsPerTrack):secOffset(sector, track, self.sectorsPerTrack)+128] = data[:128]
             data = data[128:]
 
-        isisName = os.path.split(name)[1]
-
-        entry = DirEntry(ACT_OPEN, isisName, ext, sector=blkList.sector, track=blkList.track, length=dataLen)
+        entry = DirEntry(ACT_OPEN, name, ext, sector=blkList.sector, track=blkList.track, length=dataLen)
         self.dir.add(entry)
 
         blkList.save(self.contents)
