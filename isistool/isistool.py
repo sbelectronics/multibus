@@ -87,6 +87,8 @@ class DirEntry:
         leftover = self.length % 128
         if (leftover!=0):
             datablocks += 1
+        else:
+            leftover = 128  # not really "leftover" but actually length of last block
         packed = struct.pack("B6s3sBBHBB",
                     self.activity,
                     self.name.encode(encoding="utf-8"),
@@ -451,6 +453,10 @@ class Disk:
     def addFile(self, name, data):
         name = os.path.split(name)[1]
 
+        # if we're replacing, then delete
+        if self.dir.find(name):
+            self.deleteFile(name)
+
         if "." in name:
             (name, ext) = name.split(".",1)
         else:
@@ -479,7 +485,7 @@ class Disk:
         self.saveDir()
         self.saveBitmap()
 
-    def chkdsk(self):
+    def chkdsk(self, verbose=False):
         cmap = Bitmap(self.sectorsPerTrack)
         for entry in self.dir.entries:
             if entry.activity == ACT_OPEN:
@@ -490,6 +496,7 @@ class Disk:
                         if link.track != 0:
                             cmap.useSector(link.sector, link.track)
                     cmap.useSector(linkBlock.sector, linkBlock.track)
+        
 
         # T0 is always used
         for i in range(0, self.sectorsPerTrack):
@@ -499,14 +506,20 @@ class Disk:
         for i in range(26, self.sectorsPerTrack):
             cmap.useSector(i+1, 1)
 
+        inuse = 0
         failed=False
         for i in range(0, 77*self.sectorsPerTrack):
+            if cmap.inuse[i]:
+                inuse += 1
             if cmap.inuse[i] and not self.bitmap.inuse[i]:
                 print("Sector %d Track %d is in use but not marked in bitmap" % secNumberToSecTrack(i, self.sectorsPerTrack))
                 failed=True
             if not cmap.inuse[i] and self.bitmap.inuse[i]:
                 print("Sector %d Track %d is marked in bitmap but not in use" % secNumberToSecTrack(i, self.sectorsPerTrack))
                 failed=True
+
+        if verbose:
+            print("%d blocks used" % inuse)
 
         if failed:
             raise Exception("CHKDSK failed")
