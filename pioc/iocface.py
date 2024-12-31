@@ -188,8 +188,8 @@ class IOCInterface:
         IO.output(PIN_INIT,1)
 
     def hreset(self):
-        IO.output(PIN_HRESET,0)
         IO.output(PIN_HRESET,1)
+        IO.output(PIN_HRESET,0)
 
     def printFlags(self):
         flags = self.readFlags()
