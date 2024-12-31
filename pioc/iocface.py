@@ -1,6 +1,7 @@
 from __future__ import print_function
 import string
 import select
+import os
 import sys
 import time
 import RPi.GPIO as IO
@@ -349,8 +350,11 @@ class IOCInterface:
         ch ='A'
         lines = open("disk.lst","r").readlines()
         for line in lines:
+            if line.startswith("#"):
+                continue
             line = line.strip()
-            print("%c: %s" % (ch, line))
+            diskName = os.path.split(line)[1]
+            print("%c: %s" % (ch, diskName))
             diskdict[ch] = line
             ch = chr(ord(ch)+1)
         while not self.keyReady():
@@ -368,7 +372,7 @@ class IOCInterface:
             if v==(ord('D')-ord('A')+1):
                 self.diskList()
                 return False
-            elif v==(ord('W')-ord('A')+1):
+            elif v==(ord('Y')-ord('A')+1):
                 print("<hreset>")
                 self.hreset()
                 self.reset()
@@ -591,7 +595,7 @@ class IOCInterface:
 
     
     def run(self, terminal, noKeyboard=False, disk=None, purge=False):
-        print("<CTRL-D>: DISK  <CTRL-T> Verbose  <CTRL-U> Quiet  <CTRL-W>: RESET")
+        print("<CTRL-D>: DISK  <CTRL-T> Verbose  <CTRL-U> Quiet  <CTRL-Y>: RESET")
         print("<CTRL-X>: EOF")
         print("<ioc started>")
         print("")
