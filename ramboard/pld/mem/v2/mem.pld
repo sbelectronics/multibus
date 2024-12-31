@@ -1,0 +1,65 @@
+Name mem;
+Partno G22V10#2;
+Revision;
+Date 09/1/2023;
+Designer Scott Baker;
+Company ;
+Location ;
+Assembly multibus ram mem;
+Device G22V10;
+
+/* Inputs: */
+Pin 1  = MSBANK;
+Pin 2  = A11;
+Pin 3  = A12;
+Pin 4  = A13;
+Pin 5  = A14;
+Pin 6  = A15;
+Pin 7  = !IOSEL;
+Pin 8  = !XACK;
+Pin 9  = MRDC;
+Pin 10 = MWTC;
+Pin 11 = IORC;
+Pin 13 = IOWC;
+
+/* Outputs:  */
+Pin 23 = !RAMRD;
+Pin 22 = !RAMWR;
+Pin 21 = !ROMRD;
+Pin 20 = !ROMWR;
+Pin 19 = !BOARDCS;
+Pin 18 = BDIR;
+Pin 17 = !IORD; /* replace with NC */
+Pin 16 = !IOWR; /* replace with !BUSEN */
+Pin 15 = !STARTUP;
+Pin 14 = !SELBOOT;
+
+/* NOTE: intended to gate ROMCS and RAM0CS on MSB0, but found that
+ * A16, A17, A18, and A19 are not implemented on the 80/24 board
+ */
+
+ROMCS = 'b'0;
+RAMCS = 'b'1;
+
+_RAMRD = RAMCS & (!ROMCS) & MRDC;
+_RAMWR = RAMCS & MWTC;
+
+_ROMRD = ROMCS & MRDC;
+_ROMWR = 'b'0;
+
+_IORD = IOSEL & IORC;
+_IOWR = IOSEL & IOWC;
+
+RAMRD = _RAMRD;
+RAMWR = _RAMWR;
+ROMRD = _ROMRD;
+ROMWR = _ROMWR;
+
+IORD = _IORD;
+IOWR = _IOWR;
+
+NC1 = RAMCS;
+NC2 = ROMCS;
+
+BOARDCS = _RAMRD # _RAMWR # _ROMRD # _ROMWR # _IORD # _IOWR;
+BDIR = !(_RAMRD # _ROMRD # _IORD);

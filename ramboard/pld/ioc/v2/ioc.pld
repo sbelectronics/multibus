@@ -1,0 +1,63 @@
+Name ioc;
+Partno G22V10#2;
+Revision;
+Date 09/1/2023;
+Designer Scott Baker;
+Company ;
+Location ;
+Assembly multibus ram xack;
+Device G22V10;
+
+/* Inputs: */
+Pin 1  = NC1;
+Pin 2  = OBQ;
+Pin 3  = IBQ;
+Pin 4  = !PSELDBIN;
+Pin 5  = !PSELDBOUT;
+Pin 6  = A0;
+Pin 7  = IORC;
+Pin 8  = IOWC;
+Pin 9  = !IOC_CS;
+Pin 10 = NC10;
+Pin 11 = NC11;
+Pin 13 = NC12;
+
+/* Outputs:  */
+Pin 23 = OBF;
+Pin 22 = IBF;
+Pin 21 = !POBC;
+Pin 20 = !MIBC374;
+Pin 19 = MIBC74;
+Pin 18 = !MSELSTAT;
+Pin 17 = !MOBOC;
+Pin 16 = MCDF;
+Pin 15 = SLAVECS;
+Pin 14 = NC14;
+
+_MWRITE = IOWC & IOC_CS;
+_MREAD = IORC & IOC_CS;
+_MDATAREAD = (!A0) & _MREAD;
+_MSTATREAD = A0 & _MREAD;
+
+/*
+  OBF=1 if ...
+     OBQ=L
+     !MOBOC=L == MOBOC=H
+
+  IBF=1 if ...
+     IBQ=L
+     !PSELDBIN=L == PSELDBIN=H
+
+*/
+
+OBF = (!OBQ) # _MDATAREAD;  /* OBF set if OBQ=L or master is reading data */
+IBF = (!IBQ) # PSELDBIN;    /* IBF set if IBQ=L or slave is reading data */
+MSELSTAT = _MSTATREAD;    /* Select the master status reg when master reading status */
+MOBOC = _MDATAREAD;       /* Enable output buffer to master when master reading data */
+MIBC74 = !_MWRITE;        /* CLK to master flipflops should be low during master write */
+MIBC374 = !_MWRITE;       /* CLK to input buffer should be high during master write */
+MCDF = !A0;               /* invert the C/D flag */
+
+POBC = !PSELDBOUT;        /* CLK to output buffer should be high during slave write */
+
+SLAVECS = _MWRITE # _MREAD; /* to signal XACK */
