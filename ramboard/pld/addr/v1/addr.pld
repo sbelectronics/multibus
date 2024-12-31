@@ -55,6 +55,10 @@ FIELD ADDR = [A7..A0];
 
  /* IPC and IOC ports
   *
+  * 68-6F - hard drive board, optional
+  * 78-7F - first floppy board, optional
+  * 88-8F - second floppy board, optional
+  *
   * C0/C1 - IOC
   * F8/F9 - PIO
   *
@@ -91,8 +95,12 @@ FIELD ADDR = [A7..A0];
   * int7 - unused
   */
 
+/* rightmost multimodule socket */
+
 _MCS0 = MPST01 & ((ADDR:B0) # (ADDR:B1) # (ADDR:B2) # (ADDR:B3) # (ADDR:B4) # (ADDR:B5) # (ADDR:B6) # (ADDR:B7));
 _MCS1 = MPST01 & ((ADDR:B8) # (ADDR:B9) # (ADDR:BA) # (ADDR:BB) # (ADDR:BC) # (ADDR:BD) # (ADDR:BE) # (ADDR:BF));
+
+/* leftmost multimodule socket */
 
 _MCS2 = MPST23 & ((ADDR:A0) # (ADDR:A1) # (ADDR:A2) # (ADDR:A3) # (ADDR:A4) # (ADDR:A5) # (ADDR:A6) # (ADDR:A7));
 _MCS3 = MPST23 & ((ADDR:A8) # (ADDR:A9) # (ADDR:AA) # (ADDR:AB) # (ADDR:AC) # (ADDR:AD) # (ADDR:AE) # (ADDR:AF));
