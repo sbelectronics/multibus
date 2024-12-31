@@ -169,7 +169,7 @@ class IOCInterface:
         IO.output(PIN_SETF1, 1)
         IO.output(PIN_RESETF1, 1)
 
-        IO.output(PIN_HRESET, 1)
+        IO.output(PIN_HRESET, 0)
 
     def cleanup(self):
         # make sure pigpio is cleaned up
