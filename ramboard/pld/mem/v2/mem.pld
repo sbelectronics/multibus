@@ -52,6 +52,12 @@ _IOWR = IOSEL & IOWC;
 
 _BOARDCS = _RAMRD # _RAMWR # _ROMRD # _ROMWR # _IORD # _IOWR;
 
+/* extended write -- hold the bus transceiver active through the duration
+ * of XACK. See multibus manual.
+ */
+
+_EXTW = (XACK & (MWTC # IOWC));
+
 RAMRD = _RAMRD;
 RAMWR = _RAMWR;
 ROMRD = _ROMRD;
@@ -64,6 +70,6 @@ NC1 = RAMCS;
 NC2 = ROMCS;
 
 BOARDCS = _BOARDCS;
-BUSEN = _BOARDCS # XACK;
+BUSEN = _BOARDCS # _EXTW;
 BDIR = !(_RAMRD # _ROMRD # _IORD);
 
