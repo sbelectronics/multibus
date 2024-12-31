@@ -29,8 +29,8 @@ Pin 21 = !ROMRD;
 Pin 20 = !ROMWR;
 Pin 19 = !BOARDCS;
 Pin 18 = BDIR;
-Pin 17 = !IORD; /* replace with NC */
-Pin 16 = !IOWR; /* replace with !BUSEN */
+Pin 17 = NC17;
+Pin 16 = !BUSEN;
 Pin 15 = !STARTUP;
 Pin 14 = !SELBOOT;
 
@@ -50,6 +50,8 @@ _ROMWR = 'b'0;
 _IORD = IOSEL & IORC;
 _IOWR = IOSEL & IOWC;
 
+_BOARDCS = _RAMRD # _RAMWR # _ROMRD # _ROMWR # _IORD # _IOWR;
+
 RAMRD = _RAMRD;
 RAMWR = _RAMWR;
 ROMRD = _ROMRD;
@@ -61,5 +63,7 @@ IOWR = _IOWR;
 NC1 = RAMCS;
 NC2 = ROMCS;
 
-BOARDCS = _RAMRD # _RAMWR # _ROMRD # _ROMWR # _IORD # _IOWR;
+BOARDCS = _BOARDCS;
+BUSEN = _BOARDCS # XACK;
 BDIR = !(_RAMRD # _ROMRD # _IORD);
+
