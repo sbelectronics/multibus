@@ -1,0 +1,90 @@
+Name mem;
+Partno G22V10#2;
+Revision;
+Date 09/1/2023;
+Designer Scott Baker;
+Company ;
+Location ;
+Assembly multibus ram mem;
+Device G22V10;
+
+/* v2-isis-in-eprom
+ *
+ * This version is for putting ISIS in EPROM. STARTUP and SELBOOT are used to
+ * selectively turn off EPROM and enable RAM in its place.
+ *
+ * Upon startup, both STARTUP and SELBOOT are set.
+ * EPROM will be mapped
+ *   0x0000-0x7FFF lower 32K
+ *   0xE800-0xEAFF ISIS boot ROM
+ *   0xEB00-0xEFFF ISIS diagnostic ROM
+ *   0xF800-0xFFFF ISIS monitor ROM
+ *
+ * When STARTUP is cleared,
+ *   0x0000-0x7FFF changes to RAM
+ *
+ * When SELBOOT is cleared,
+ *   0xE800-0xEFFF changes to RAM
+ *
+ */
+
+/* Inputs: */
+Pin 1  = MSBANK;
+Pin 2  = A11;
+Pin 3  = A12;
+Pin 4  = A13;
+Pin 5  = A14;
+Pin 6  = A15;
+Pin 7  = !IOSEL;
+Pin 8  = !XACK;
+Pin 9  = MRDC;
+Pin 10 = MWTC;
+Pin 11 = IORC;
+Pin 13 = IOWC;
+
+/* Outputs:  */
+Pin 23 = !RAMRD;
+Pin 22 = !RAMWR;
+Pin 21 = !ROMRD;
+Pin 20 = !ROMWR;
+Pin 19 = !BOARDCS;
+Pin 18 = BDIR;
+Pin 17 = ROMCS;     /* not connected, used as intermediate variable */
+Pin 16 = !BUSEN;
+Pin 15 = !STARTUP;  /* input */
+Pin 14 = !SELBOOT;  /* input */
+
+FIELD ADDR = [A15..A11];
+
+MONADDR = (ADDR:F8XX) # (ADDR:F9XX) # (ADDR:FAXX) # (ADDR:FBXX) # (ADDR:FCXX) # (ADDR:FDXX) # (ADDR:FEXX) # (ADDR:FFXX);
+BOOTADDR = (ADDR:E8XX) # (ADDR:E9XX) # (ADDR:EAXX) # (ADDR:EBXX) # (ADDR:ECXX) # (ADDR:EDXX) # (ADDR:EEXX) # (ADDR:EFXX);
+LOWADDR = (ADDR:0XXX) # (ADDR:1XXX) # (ADDR:2XXX) # (ADDR:3XXX) # (ADDR:4XXX) # (ADDR:5XXX) # (ADDR:6XXX) # (ADDR:7XXX);
+
+ROMCS = (LOWADDR & STARTUP) # (BOOTADDR & SELBOOT) # MONADDR;
+RAMCS = !ROMCS;
+
+_RAMRD = RAMCS & MRDC;
+_RAMWR = RAMCS & MWTC;
+
+_ROMRD = ROMCS & MRDC;
+_ROMWR = 'b'0;
+
+_IORD = IOSEL & IORC;
+_IOWR = IOSEL & IOWC;
+
+_BOARDCS = _RAMRD # _RAMWR # _ROMRD # _ROMWR # _IORD # _IOWR;
+
+/* extended write -- hold the bus transceiver active through the duration
+ * of XACK. See multibus manual.
+ */
+
+_EXTW = (XACK & (MWTC # IOWC));
+
+RAMRD = _RAMRD;
+RAMWR = _RAMWR;
+ROMRD = _ROMRD;
+ROMWR = _ROMWR;
+
+BOARDCS = _BOARDCS;
+BUSEN = _BOARDCS # _EXTW;
+BDIR = !(_RAMRD # _ROMRD # _IORD);
