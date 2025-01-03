@@ -478,7 +478,7 @@ class IOCInterface:
             if self.iopbSectorCount==0:
                 self.iopbSectorCount = 1  # sector count of 0 should be interpreted as 1 sector
         elif (self.iopbByte == 3):
-            self.iobpTrack = self.getInputByte() & 0x7F;
+            self.iopbTrack = self.getInputByte() & 0x7F;
         elif (self.iopbByte == 4):
             self.iopbSectorAddress = self.getInputByte() & 0x1F;
             if self.iopbSectorAddress==0:
@@ -491,9 +491,10 @@ class IOCInterface:
         self.nilCommandResultAndResetF0()
 
     def diskRead(self):
+        self.log(LOG_INFO, "  diskRead: channel=%d, track=%d, sector=%d, sectorCount=%d" % (self.iopbChannel, self.iopbTrack, self.iopbSectorAddress, self.iopbSectorCount))
         f = open(self.disk, "rb")
         try:
-            f.seek((self.iobpTrack*26 + self.iopbSectorAddress)*128)
+            f.seek((self.iopbTrack*26 + self.iopbSectorAddress)*128)
             # read the file into the disk buffer
 
             self.diskBuffer = f.read(self.iopbSectorCount*128)
@@ -502,9 +503,10 @@ class IOCInterface:
         self.diskComplete = True
 
     def diskWrite(self):
+        self.log(LOG_INFO, "  diskWrite: channel=%d, track=%d, sector=%d, sectorCount=%d" % (self.iopbChannel, self.iopbTrack, self.iopbSectorAddress, self.iopbSectorCount))
         f = open(self.disk, "r+b")
         try:
-            f.seek((self.iobpTrack*26 + self.iopbSectorAddress)*128)
+            f.seek((self.iopbTrack*26 + self.iopbSectorAddress)*128)
             # write the disk buffer to the file
             f.write(bytearray(self.diskBuffer))
         finally:
