@@ -1,14 +1,18 @@
 30-31 RTS TO CTS
 32-33 CTS driver to +12V
-35-36 TxD to TTY driver
-38-39 DTR to TTY driver
+35-36 TxD to TTY driver (20ma)
+  I chaned this to 34-35 (rs232)
+38-39 DTR to TTY driver (20ma)
+  I changed this to 37-38 (rs232)
 
-41-46 TTY return to RXD
+41-46 TTY return to RXD (20ma)
+  I changed this to 45-46 (rs232)
 42-47 internal clock to RxC
 43-48 internal clock to TxC
 44-49 DTR to DSR
 
-50-52
+50-52 - 1200 baud
+  I changed this to 50-56 - 9600 baud
 
 63-64 HALT to P2
 
