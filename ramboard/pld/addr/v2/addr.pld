@@ -115,13 +115,24 @@ MCS1 = _MCS1;
 MCS2 = _MCS2;
 MCS3 = _MCS3;
 
-IOC_CS = _IOC_CS;
-INT_CS = _INT_CS;
-MINT_CS = _MINT_CS;
+IOC_CS = _IOC_CS;           /* CS to IOC PLD */
+INT_CS = _INT_CS;           /* CS to slave 8259 */
+MINT_CS = _MINT_CS;         /* CS to optional master 8259 */
 
 CONFIGWR = _CPUC_CS & IOWC; /* write strobe to config reg */
 
-/* NOTE: IOC_CS and CPUC_CS do not use IOSEL as they are connected directly to the inverted data bus */
+/*
+ * NOTE: IOC_CS are connected directly to the inverted data bus. They do not use the 74LS640 data buffer that
+ * the rest of the board uses.
+ *
+ * IOC_CS I left out of IOSEL. The IOC PLD will assert SLAVECS, which will signal the XACK PLD.
+ *
+ * CPUC_CS I included in IOSEL. This will cause the MEM PLD to assert the buffers, but this really doesn't
+ * hurt anything because CPUC is write-only. CPU_CS doesn't trigger SLAVECS, but we still need to make it
+ * trigger XACK. So this is a hack to make that happen. In the future, consider including CONFIGWR as another
+ * input to XACK PLD, or stick some inverters in front of the 74LS259 and put it on the buffered non-inverted
+ * data bus.
+ */
 
-IOSEL = _MCS0 # _MCS1 # _MCS2 # _MCS3 # _INT_CS # MINT_CS;
+IOSEL = _MCS0 # _MCS1 # _MCS2 # _MCS3 # _INT_CS # MINT_CS # _CPUC_CS;
 
