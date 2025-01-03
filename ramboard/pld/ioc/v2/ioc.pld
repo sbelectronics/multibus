@@ -31,7 +31,7 @@ Pin 19 = MIBC74;
 Pin 18 = !MSELSTAT;
 Pin 17 = !MOBOC;
 Pin 16 = MCDF;
-Pin 15 = SLAVECS;
+Pin 15 = !SLAVECS;
 Pin 14 = NC14;
 
 _MWRITE = IOWC & IOC_CS;
