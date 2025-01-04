@@ -114,14 +114,16 @@ _IOC_CS = (ADDR:C0) # (ADDR:C1);
  * Note: SBX bus specification says that MCS0-MCS3 should only be active for an IO request, not a memory
  * request. This is done on the 80/24 board using IO/M signal from the CPU. The MWAIT behavior for the
  * SBX-331 module depends on this -- it will cause an MWAIT whenever MCS is active, which will occur
- * on memory transfers.
+ * on memory transfers. We can resolve this on the 331 by jumpering E28-E29 instead of E27-E29.
  *
  * SBX bus specification also requires 25ns time between start/end of CS and start/end of IOR or IOW
  * cycle.
  *
- * Cannot accommodate both these request without added delay circuitry. Maybe sufficient to just have
- * the MCS occur at the same time as the IOR/IOW cycle. To do so would require IORC/IOWC inputs to the
- * ADDR PLD.
+ * Cannot easily accommodate both of the above requirements at the same time. If I try to only do
+ * MCS on an IOR or IOW cycle, then I lose the 25ns time.
+ *
+ * Another idea would be to add IORC/IOWC inputs to XACK PLD, and just ignore MWAIT if not in an IO
+ * cycle.
  */
 
 MCS0 = _MCS0;
