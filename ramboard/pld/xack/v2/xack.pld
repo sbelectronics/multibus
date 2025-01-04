@@ -36,7 +36,7 @@ Pin 14 = TMP;
 
 /* TO DO: Deal with MWAIT01 and MWAIT23 */
 
-TMP = BOARDCS # SLAVECS;
+TMP = (BOARDCS # SLAVECS) & (!MWAIT01) & (!MWAIT23);
 
 CLK01.D = TMP;
 
