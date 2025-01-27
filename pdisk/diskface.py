@@ -81,6 +81,24 @@ class MultibusResetException(Exception):
     def __init__(self, message='Reset'):
         super(MultibusResetException, self).__init__(message)
 
+class IOPB:
+    def __init__(self, channel, diskInstr, numRec, trackAddr, secAddr, bufAddr):
+        self.channel = channel
+        self.diskInstr = diskInstr
+        self.numRec = numRec
+        self.trackAddr = trackAddr
+        self.secAddr = secAddr
+        self.bufAddr = bufAddr
+
+    def print(self):
+        print("IOPB:")
+        print("  Channel   = %2X" % self.channel)
+        print("  DiskInstr = %2X" % self.diskInstr)
+        print("  NumRec    = %2X" % self.numRec)
+        print("  TrackAddr = %2X" % self.trackAddr)
+        print("  SecAddr   = %2X" % self.secAddr)
+        print("  BufAddr   = %4X" % self.bufAddr)
+
 class DiskInterface:
     def __init__(self, verbosity):
         self.verbosity = verbosity
@@ -90,6 +108,7 @@ class DiskInterface:
         self.verbosityOverride = None
         self.iopbByte = 0
         self.iters = 0
+        self.iopb = None
 
         self.ext = diskdirect.diskdirect_ext
         if not self.ext.init():
@@ -222,6 +241,12 @@ class DiskInterface:
     
     def resetPending(self):
         self.ext.reset_pending()
+
+    def readMem(self, addr):
+        return self.ext.read_mem(addr)
+    
+    def writeMem(self, addr, value):
+        self.ext.write_mem(addr, value)
     
     def setAddr(self, value):
         IO.output(PIN_A0, (value & 1) != 0)
@@ -302,10 +327,25 @@ class DiskInterface:
     def resetStatus(self):
         self.updateStatus()
 
+    def readIOPB(self, addr):
+        iopbChannel = self.readMem(addr)
+        iopbDiskInstr = self.readMem(addr+1)
+        iopbNumRec = self.readMem(addr+2)
+        iopbTrackAddr = self.readMem(addr+3)
+        iopbSecAddr = self.readMem(addr+4)
+        iopbBufAddr = self.readMem(addr+5) | (self.readMem(addr+6)<<8)
+
+        iopt = IOPB(iopbChannel, iopbDiskInstr, iopbNumRec, iopbTrackAddr, iopbSecAddr, iopbBufAddr)
+
     def handleCommand(self):
         self.resetPending()
         addr = self.readMBOX(MBOX_ADDR_LOWER) | (self.readMBOX(MBOX_ADDR_UPPER)<<8)
-        print("command at %X" % addr)
+
+        self.log(LOG_INFO, "Command: iopb at %X" % addr)
+
+        self.iopb = self.readIOPB(addr)
+        if self.verbosity >= LOG_INFO:
+            self.iopb.print()
     
     def pitest(self):
         print("write to 0x78-0x7B: 33, 44, 55, 66")
