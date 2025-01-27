@@ -82,6 +82,19 @@ def main():
         elif (cmd=="pitest"):
             diskface.pitest()
 
+        elif (cmd=="peek"):
+            if len(args)!=1:
+                print("missing addr")
+                sys.exit(-1)
+            v = diskface.readMem(int(args[0], 16))
+            print("%02X" % v)
+            
+        elif (cmd=="poke"):
+            if len(args)!=2:
+                print("missing addr and/or value")
+                sys.exit(-1)
+            diskface.writeMem(int(args[0], 16), int(args[1], 16))
+
         elif (cmd=="out"):
             if len(args)!=2:
                 print("missing reg and/or value")
