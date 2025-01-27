@@ -113,6 +113,15 @@ static void _wait_for_xack()
   }
 }
 
+static void _busreq()
+{
+  gpioWrite(PIN_BCR1, 1);
+  short_delay();
+  gpioWrite(PIN_RSTB, 0);
+  medium_delay();
+  gpioWrite(PIN_RSTB, 1);
+}
+
 static uint16_t _data_read()
 {
   uint32_t data = gpioRead_Bits_0_31();
@@ -213,6 +222,7 @@ static void _write_mem(uint16_t val)
   _select(REG_BUSW);
   short_delay();
   _stb_down();
+  _busreq();
   _wait_for_xack();
   _stb_up();
   _databus_config_read();
@@ -224,6 +234,7 @@ static uint16_t _read_mem()
   _select(REG_BUSR);
   short_delay();
   _stb_down();
+  _busreq();
   _wait_for_xack();
   v = _data_read_inverted();
   _stb_up();
