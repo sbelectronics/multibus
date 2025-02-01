@@ -16,10 +16,12 @@ PIN_D5=21
 PIN_D6=22
 PIN_D7=23
 
+PIN_INT_RESET = 2
 PIN_RESIN = 8
 PIN_XACK = 9
 PIN_WAIT = 10
 PIN_HRESET = 11
+PIN_INT = 12
 PIN_STB = 13
 PIN_IOR = 14
 PIN_IOW = 15
@@ -73,6 +75,46 @@ STAT_DD = 0x10
 STAT_READY2 = 0x20
 STAT_READY3 = 0x40
 
+OP_NOP = 0
+OP_SEEK = 1
+OP_FORMAT = 2
+OP_RECAL = 3
+OP_READ = 4
+OP_VERIFY = 5
+OP_WRITE = 6
+OP_WRITEDEL = 7
+
+OPNAMES = {
+    OP_NOP: "NOP",
+    OP_SEEK: "SEEK",
+    OP_FORMAT: "FORMAT",
+    OP_RECAL: "RECAL",
+    OP_READ: "READ",
+    OP_VERIFY: "VERIFY",
+    OP_WRITE: "WRITE",
+    OP_WRITEDEL: "WRITEDEL"
+}
+
+RES_DELETED = 1
+RES_CRCERR = 2
+RES_SEEKERR = 4
+RES_ADDRERR = 8
+RES_OVERRUNERR = 0x10
+RES_WRITEPROTERR = 0x20
+RES_WRITEERR = 0x40
+RES_NOTREADYERR = 0x80
+
+"""
+   Possible solution for interrupt mess
+
+   1. Add 16V8 PLD
+   2. Input MMR and A0-A3. This we can determine if read of result regs is happening.
+   3. Input D2 from MMR. If we are reading Result Type or Result Byte, pass it through. Otherwise, return int status.
+   4. Output D2 to data bus, when MMR and A0-A3 indicate we're reating subsystem status.
+   5. Output INT.
+   6. Input PINT.
+"""
+
 class ResetException(Exception):
     def __init__(self, message='Reset'):
         super(ResetException, self).__init__(message)
@@ -83,6 +125,11 @@ class MultibusResetException(Exception):
 
 class IOPB:
     def __init__(self, channel, diskInstr, numRec, trackAddr, secAddr, bufAddr):
+        if secAddr==0:
+            secAddr = 1   # valid sectors are 1-26, so just in case someone passes a 0
+        else:
+            secAddr -= 1  # convert to 0-based        
+
         self.channel = channel
         self.diskInstr = diskInstr
         self.numRec = numRec
@@ -98,16 +145,32 @@ class IOPB:
         print("  TrackAddr = %2X" % self.trackAddr)
         print("  SecAddr   = %2X" % self.secAddr)
         print("  BufAddr   = %4X" % self.bufAddr)
+        print("  Operation = %s" % OPNAMES.get(self.op(), "UNKNOWN"))
+        print("  Unit      = %d" % self.unit())
+        print("  WordLen   = %d" % self.wordlen())
+        print("  IntEnable = %d" % self.intEnable())
+
+    def op(self):
+        return self.diskInstr & 0x0F
+    
+    def unit(self):
+        return (self.diskInstr & 0x30) >> 4
+    
+    def wordlen(self):
+        return (self.diskInstr & 0x08) >> 3
+    
+    def intEnable(self):
+        return ((self.channel & 0x30) >> 4) == 0
 
 class DiskInterface:
     def __init__(self, verbosity):
         self.verbosity = verbosity
         self.multibusReset = False
         self.enableDisk = False
-        self.diskComplete = False
         self.verbosityOverride = None
         self.iopbByte = 0
         self.iters = 0
+        self.disks = ["disk0.img", "disk1.img", "disk2.img", "disk3.img"]
         self.iopb = None
 
         self.ext = diskdirect.diskdirect_ext
@@ -123,6 +186,8 @@ class DiskInterface:
         IO.setup(PIN_A2, IO.OUT)
         IO.setup(PIN_A3, IO.OUT)
 
+        IO.setup(PIN_INT, IO.OUT)
+        IO.setup(PIN_INT_RESET, IO.OUT)
         IO.setup(PIN_HRESET, IO.OUT)
         IO.setup(PIN_WAIT, IO.OUT)
         IO.setup(PIN_STB, IO.OUT)
@@ -137,6 +202,7 @@ class DiskInterface:
         IO.output(PIN_A0, 2)
         IO.output(PIN_A0, 3)
 
+        IO.output(PIN_INT, 0)
         IO.output(PIN_HRESET, 0)
         IO.output(PIN_WAIT, 1)
         IO.output(PIN_STB, 1)
@@ -236,6 +302,12 @@ class DiskInterface:
         #self.select(REG_NONE)
         #self.setDataInput()
 
+    def intSet(self):
+        self.ext.int_set()
+
+    def intReset(self):
+        self.ext.int_reset()
+
     def readPending(self):
         return self.ext.read_pending()
     
@@ -283,8 +355,8 @@ class DiskInterface:
             self.yieldCPU()
         v = chr(self.keyGet()).upper()
         if v in diskdict:
-            self.disk = diskdict[v]
-            print("disk selected: %s" % self.disk)
+            self.disks[0] = diskdict[v]
+            print("disk selected: %s" % self.disks[0])
         else:
             print("invalid disk selection")
 
@@ -320,7 +392,15 @@ class DiskInterface:
     
     def updateStatus(self):
         v = STAT_PRES | STAT_DD;
-        v = v | STAT_READY0
+
+        flags = [STAT_READY0, STAT_READY1, STAT_READY2, STAT_READY3]
+
+        for i in range(0,4):
+            if (self.disks[i]!=None):
+                if (os.path.exists(self.disks[i])):
+                    v = v | flags[i]
+                else:
+                    self.log(LOG_WARN, "Disk %d (%s) not found and marked not ready." % (i, self.disks[i]))
 
         self.writeMBOX(MBOX_STATUS, v)
 
@@ -335,7 +415,83 @@ class DiskInterface:
         iopbSecAddr = self.readMem(addr+4)
         iopbBufAddr = self.readMem(addr+5) | (self.readMem(addr+6)<<8)
 
-        iopt = IOPB(iopbChannel, iopbDiskInstr, iopbNumRec, iopbTrackAddr, iopbSecAddr, iopbBufAddr)
+        iopb = IOPB(iopbChannel, iopbDiskInstr, iopbNumRec, iopbTrackAddr, iopbSecAddr, iopbBufAddr)
+        return iopb
+    
+    def setDisk(self, unit, disk):
+        self.disks[unit] = disk
+    
+    def openDisk(self):
+        unit = self.iopb.unit()
+        disk = self.disks[unit]
+        if not os.path.exists(disk):
+            self.error("Disk file %s not found" % disk)
+            self.writeMBOX(MBOX_RESULT_TYPE, 0)
+            self.writeMBOX(MBOX_RESULT_BYTE, 0)
+            self.writeMBOX(MBOX_RESULT_BYTE, 0x80)  # not ready            
+            self.intSet()
+            return None
+        return open(disk, "r+b")
+    
+    def handleNOP(self):
+        self.writeMBOX(MBOX_RESULT_TYPE, 0)
+        self.writeMBOX(MBOX_RESULT_BYTE, 0)
+        self.intSet()
+    
+    def handleRead(self):
+        f = self.openDisk()
+        if f == None:
+            return
+        try:
+            f.seek((self.iopb.trackAddr*52 + self.iopb.secAddr)*128)
+
+            self.diskBuffer = f.read(self.iopb.numRec*128)
+
+            startTime = time.time()
+
+            i = self.iopb.bufAddr
+            for b in self.diskBuffer:
+                self.writeMem(i, b)
+                i += 1
+
+            self.writeMBOX(MBOX_RESULT_TYPE, 0)
+            self.writeMBOX(MBOX_RESULT_BYTE, 0)
+            self.intSet()
+
+            self.log(LOG_INFO, "Read %d bytes from disk in %0.2fs" % (len(self.diskBuffer), time.time()-startTime))
+        finally:
+            f.close()
+
+    def handleWrite(self):
+        f = self.openDisk()
+        if f == None:
+            return
+        try:
+            f.seek((self.iopb.trackAddr*52 + self.iopb.secAddr)*128)
+
+            self.diskBuffer = bytearray()
+
+            startTime = time.time()
+
+            i = self.iopb.bufAddr
+            for b in range(0, self.iopb.numRec*128):
+                self.diskBuffer.append(self.readMem(i))
+                i += 1
+
+            self.writeMBOX(MBOX_RESULT_TYPE, 0)
+            self.writeMBOX(MBOX_RESULT_BYTE, 0)
+            self.intSet()
+
+            f.write(bytearray(self.diskBuffer))
+
+            self.log(LOG_INFO, "Wrote %d bytes from disk in %0.2fs" % (len(self.diskBuffer), time.time()-startTime))
+        finally:
+            f.close()
+
+    def handleSeek(self):
+        self.writeMBOX(MBOX_RESULT_TYPE, 0)
+        self.writeMBOX(MBOX_RESULT_BYTE, 0)
+        self.intSet()
 
     def handleCommand(self):
         self.resetPending()
@@ -346,6 +502,17 @@ class DiskInterface:
         self.iopb = self.readIOPB(addr)
         if self.verbosity >= LOG_INFO:
             self.iopb.print()
+
+        if self.iopb.op() == OP_NOP:
+            self.handleNOP()
+        elif self.iopb.op() == OP_READ:
+            self.handleRead()
+        elif self.iopb.op() == OP_WRITE:
+            self.handleWrite()
+        elif self.iopb.op() == OP_SEEK:
+            self.handleSeek()
+        else:
+            self.error("Unhandled command %s (%d)" % (OPNAMES.get(self.iopb.op(), "UNKNOWN"), self.iopb.op()))
     
     def pitest(self):
         print("write to 0x78-0x7B: 33, 44, 55, 66")
@@ -373,6 +540,7 @@ class DiskInterface:
         self.disk = disk
         while True:
             try:
+                self.intReset()
                 self.resetStatus()
                 self.writeMBOX(MBOX_RESULT_BYTE, 0)
                 self.writeMBOX(MBOX_RESULT_TYPE, 0)

@@ -13,10 +13,12 @@
 #define PIN_D6 22
 #define PIN_D7 23
 
+#define PIN_INT_RESET 2
 #define PIN_RESIN 8
 #define PIN_XACK 9
 #define PIN_WAIT 10
 #define PIN_HRESET 11
+#define PIN_INT 12
 #define PIN_STB 13
 #define PIN_IOR 14
 #define PIN_IOW 15
@@ -69,6 +71,16 @@ void medium_delay(void)
     int j;
     int dv = 400 * delayMult;
 
+    // pi zero 2 w timings observed while calling medium_delay
+    // between stb_down() and stb_up()
+    //    50 --> 0.31us
+    //   100 --> 0.46us
+    //   200 --> 0.77us
+    //   400 --> 1.37us
+    //
+    // Note: Nanosleep did not work for me. The shortest wait I could
+    //       get was around 75us.
+
     for (j=0; j<dv; j++) {
         asm("nop");
     }
@@ -120,6 +132,33 @@ static void _busreq()
   gpioWrite(PIN_RSTB, 0);
   medium_delay();
   gpioWrite(PIN_RSTB, 1);
+  short_delay();
+  gpioWrite(PIN_BCR1, 0);
+}
+
+static void _busrel()
+{
+  gpioWrite(PIN_BCR1, 0);
+  short_delay();
+  gpioWrite(PIN_RSTB, 0);
+  medium_delay();
+  gpioWrite(PIN_RSTB, 1);
+}
+
+static void _int_set()
+{
+  gpioWrite(PIN_INT, 1);
+  short_delay();
+  gpioWrite(PIN_INT, 0);
+  short_delay();
+}
+
+static void _int_reset()
+{
+  gpioWrite(PIN_INT_RESET, 0);
+  short_delay();
+  gpioWrite(PIN_INT_RESET, 1);
+  short_delay();
 }
 
 static uint16_t _data_read()
@@ -194,12 +233,13 @@ static void _reset_pending()
 static void _write_addr_high(uint16_t addr)
 {
   _databus_config_write();
-  _data_write_inverted((addr >> 8) & 0xFF);
+  _data_write_inverted(addr & 0xFF);
   _select(REG_LATAH);
   short_delay();
   _stb_down();
   medium_delay();
   _stb_up();
+  short_delay();
   _databus_config_read();
 }
 
@@ -212,6 +252,7 @@ static void _write_addr_low(uint16_t addr)
   _stb_down();
   medium_delay();
   _stb_up();
+  short_delay();
   _databus_config_read();
 }
 
@@ -224,6 +265,7 @@ static void _write_mem(uint16_t val)
   _stb_down();
   _busreq();
   _wait_for_xack();
+  _busrel();
   _stb_up();
   _databus_config_read();
 }
@@ -236,6 +278,7 @@ static uint16_t _read_mem()
   _stb_down();
   _busreq();
   _wait_for_xack();
+  _busrel();
   v = _data_read_inverted();
   _stb_up();
   return v;
@@ -321,6 +364,21 @@ static PyObject *diskdirect_reset_pending(PyObject *self, PyObject *args)
   Py_RETURN_NONE;
 }
 
+static PyObject *diskdirect_int_set(PyObject *self, PyObject *args)
+{
+  _int_set();
+
+  Py_RETURN_NONE;
+}
+
+static PyObject *diskdirect_int_reset(PyObject *self, PyObject *args)
+{
+  _int_reset();
+
+  Py_RETURN_NONE;
+}
+
+
 static PyObject *diskdirect_write_mem(PyObject *self, PyObject *args)
 {
   uint16_t addr, val;
@@ -360,8 +418,10 @@ static PyMethodDef diskdirect_methods[] = {
   {"clk_delay", diskdirect_clk_delay, METH_VARARGS, "clock delay"},
   {"read_pending", diskdirect_read_pending, METH_VARARGS, "read prending flag"},
   {"reset_pending", diskdirect_reset_pending, METH_VARARGS, "reset prending flag"},
-  {"read_mem", diskdirect_read_mbox, METH_VARARGS, "read memory"},
-  {"write_mem", diskdirect_write_mbox, METH_VARARGS, "write memory"},  
+  {"read_mem", diskdirect_read_mem, METH_VARARGS, "read memory"},
+  {"write_mem", diskdirect_write_mem, METH_VARARGS, "write memory"},
+  {"int_set", diskdirect_int_set, METH_VARARGS, "set interrupt"},  
+  {"int_reset", diskdirect_int_reset, METH_VARARGS, "reset interrupt"},  
   {NULL, NULL, 0, NULL}
 };
 

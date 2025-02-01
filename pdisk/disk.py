@@ -24,6 +24,32 @@ def sigint_handler(signum, frame):
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     signal.raise_signal(signal.SIGINT)
 
+def dumpmem(diskface, start, end):
+    for i in range(start, end+1):
+        if i % 16 == 0:
+            if i != start:
+                print(" ", end="")
+                for j in range(i-16, i):
+                    c = chr(diskface.readMem(j))
+                    if c in string.printable and c not in string.whitespace:
+                        print(c, end="")
+                    else:
+                        print(".", end="")
+            print("")
+            print("%04X: " % i, end="")
+        print("%02X " % diskface.readMem(i), end="")
+    remaining = (end + 1) % 16
+    if remaining != 0:
+        print("   " * (16 - remaining), end="")
+    print(" ", end="")
+    for j in range(end - remaining + 1, end + 1):
+        c = chr(diskface.readMem(j))
+        if c in string.printable and c not in string.whitespace:
+            print(c, end="")
+        else:
+            print(".", end="")
+    print("")
+
 def main():
     global diskface
 
@@ -63,7 +89,9 @@ def main():
             t=Terminal()
             try:
                 t.setRaw()
-                diskface.run(t, noKeyboard=options.nokeyboard, disk=options.disk, purge=options.purge)
+                if options.disk:
+                    diskface.setDisk(0, options.disk)
+                diskface.run(t, noKeyboard=options.nokeyboard, purge=options.purge)
             finally:
                 t.restoreRaw()
 
@@ -100,6 +128,18 @@ def main():
                 print("missing reg and/or value")
                 sys.exit(-1)
             diskface.writeMBOX(int(args[0], 16), int(args[1], 16))       
+
+        elif (cmd=="iset"):
+            diskface.intSet()
+
+        elif (cmd=="ireset"):
+            diskface.intReset()
+
+        elif (cmd=="dumpmem"):
+            if len(args)!=2:
+                print("missing start and/or end")
+                sys.exit(-1)
+            dumpmem(diskface, int(args[0], 16), int(args[1], 16))
 
         else:
             print("unknown command: %s" % cmd)
