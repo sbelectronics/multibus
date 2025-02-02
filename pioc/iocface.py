@@ -26,6 +26,7 @@ PIN_SETF1=12
 PIN_RESETF1=13
 
 PIN_HRESET=7
+PIN_RESIN=8
 
 FLAG_OBF=1
 FLAG_IBF=2
@@ -127,9 +128,14 @@ class ResetException(Exception):
     def __init__(self, message='Reset'):
         super(ResetException, self).__init__(message)
 
+class MultibusResetException(Exception):
+    def __init__(self, message='Reset'):
+        super(MultibusResetException, self).__init__(message)
+
 class IOCInterface:
     def __init__(self, verbosity):
         self.verbosity = verbosity
+        self.multibusReset = False
         self.keyTimeout = False
         self.enableDisk = False
         self.diskComplete = False
@@ -171,6 +177,9 @@ class IOCInterface:
 
         IO.output(PIN_HRESET, 0)
 
+        IO.setup(PIN_RESIN, IO.IN)
+        IO.add_event_detect(PIN_RESIN, IO.RISING, callback=self.handleMultibusReset, bouncetime=200)
+
     def cleanup(self):
         # make sure pigpio is cleaned up
         self.ext.cleanup()
@@ -182,6 +191,14 @@ class IOCInterface:
     def setDataOutput(self):
         for datapin in DATAPINS:
             IO.setup(datapin, IO.OUT)
+
+    def handleMultibusReset(self, channel):
+        self.multibusReset = True
+
+    def checkMultibusReset(self):
+        if self.multibusReset:
+            self.multibusReset = False
+            raise MultibusResetException()
 
     def reset(self):
         IO.output(PIN_INIT,0)
@@ -304,6 +321,7 @@ class IOCInterface:
 
     def getInputByte(self):
         while True:
+            self.checkMultibusReset()
             flags = self.readFlags()
             if isIBF(flags):
                 if isCMD(flags):
@@ -317,6 +335,7 @@ class IOCInterface:
 
     def putOutputByte(self, value):
         while True:
+            self.checkMultibusReset()
             flags = self.readFlags()
             if not isOBF(flags):
                 self.log(LOG_DEBUG,"  put data byte: %2X" % value)
@@ -336,6 +355,7 @@ class IOCInterface:
     def watch(self):
         lastFlags = None
         while True:
+            self.checkMultibusReset()
             flags = self.readFlags() & 0x0F
             if (flags != lastFlags):
                 self.printFlags()
@@ -374,10 +394,14 @@ class IOCInterface:
                 return False
             elif v==(ord('Y')-ord('A')+1):
                 print("<hreset>")
+                # When <hreset> is triggered, it should automatically detect the multibus reset and trigger a
+                # MultibusResetException. This will break us out of any loops, and cause a full reset of the IOC.
                 self.hreset()
-                self.reset()
                 self.keyWait = []
-                raise ResetException()
+                return False
+            
+                #self.reset()
+                #raise ResetException()
             elif v==(ord('T')-ord('A')+1): # verbose ("talky")
                 self.verbosity += 1
                 return False
@@ -606,12 +630,14 @@ class IOCInterface:
         self.noKeyboard = noKeyboard
         while True:
             try:
+                self.reset()
                 self.resetOBF()  # reset will leave OBF set, so clear it
                 self.readDBIN()  # reset will leave IBF set, so clear it
                 self.setF0(0)    # reset will leave F0 set, so clear it       
                 if (purge):
                     self.writeDBOUT(0)
                 while True:
+                    self.checkMultibusReset()
                     flags = self.readFlags()
                     if isIBF(flags):
                         self.setF0(1)  # mark busy while we check for command
@@ -623,4 +649,7 @@ class IOCInterface:
                             self.setF0(0)  # there was no command, so clear busy flag
                     self.yieldCPU()
             except ResetException:
+                pass
+            except MultibusResetException:
+                print("<multibus reset>")
                 pass

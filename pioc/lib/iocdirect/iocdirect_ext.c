@@ -23,6 +23,7 @@
 #define PIN_RESETF1 13
 
 #define PIN_HRESET 7
+#define PIN_RESIN 8
 
 #define FLAG_OBF 1
 #define FLAG_IBF 2
