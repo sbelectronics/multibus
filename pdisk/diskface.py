@@ -488,6 +488,27 @@ class DiskInterface:
         finally:
             f.close()
 
+    def handleFormat(self):
+        f = self.openDisk()
+        if f == None:
+            return
+        try:
+            f.seek((self.iopb.trackAddr*52 + 0)*128)
+
+            startTime = time.time()
+
+            self.diskBuffer = bytearray([0xE5]*52*128)
+
+            self.writeMBOX(MBOX_RESULT_TYPE, 0)
+            self.writeMBOX(MBOX_RESULT_BYTE, 0)
+            self.intSet()
+
+            f.write(bytearray(self.diskBuffer))
+
+            self.log(LOG_INFO, "Formatted %d bytes todisk in %0.2fs" % (len(self.diskBuffer), time.time()-startTime))
+        finally:
+            f.close()
+
     def handleSeek(self):
         self.writeMBOX(MBOX_RESULT_TYPE, 0)
         self.writeMBOX(MBOX_RESULT_BYTE, 0)
@@ -509,6 +530,8 @@ class DiskInterface:
             self.handleRead()
         elif self.iopb.op() == OP_WRITE:
             self.handleWrite()
+        elif self.iopb.op() == OP_FORMAT:
+            self.handleFormat()
         elif self.iopb.op() == OP_SEEK:
             self.handleSeek()
         else:
