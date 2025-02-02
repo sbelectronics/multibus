@@ -1,0 +1,181 @@
+Name addr;
+Partno G22V10#2;
+Revision;
+Date 09/1/2023;
+Designer Scott Baker;
+Company ;
+Location ;
+Assembly multibus ram address;
+Device G22V10;
+
+/* Inputs: */
+Pin 1  = IOWC;
+Pin 2  = A0;
+Pin 3  = A1;
+Pin 4  = A2;
+Pin 5  = A3;
+Pin 6  = A4;
+Pin 7  = A5;
+Pin 8  = A6;
+Pin 9  = A7;
+Pin 10 = IORC;
+Pin 11 = !MPST01;
+Pin 13 = !MPST23;
+
+/* Outputs:  */
+Pin 23 = !CONFIGWR;  /* Not connected on v1 diskboard */
+Pin 22 = !IOSEL;
+Pin 21 = !MMR;
+Pin 20 = !MMW;
+Pin 19 = !WRTFLAG;
+Pin 18 = !WAITABLE;
+Pin 17 = !MCS0;
+Pin 16 = !MCS1;
+Pin 15 = !MCS2;
+Pin 14 = !MCS3;
+
+FIELD ADDR = [A7..A0];
+
+/* SBC-80/24A Ports
+ *
+ * D4 - power fail
+ * D5 - system bus
+ * D6 - LED
+ * DA/D8 and DB/D9 - onboard 8259
+ * DC-DF - counter/timer
+ * E4,E5,E6,E7 - onboard 8255-1
+ * E8,E9,EA,EB - onboard 8255-2
+ * EC, ED - onboard 8251
+ * C0-CF - multimodule J5
+ * F0-FF - multimodule J6
+ *
+ * With multimodules: C0-CF, D4-FF
+ * Without multimodules: D4-EF
+ */
+
+ /* IPC and IOC ports
+  *
+  * 68-6F - hard drive board, optional
+  * 78-7F - first floppy board, optional
+  * 88-8F - second floppy board, optional
+  *
+  * C0/C1 - IOC
+  * F8/F9 - PIO
+  *
+  * F0 - serial 0 baud
+  * F1 - serial 1 baud
+  * F2 - RTC
+  * F3 - timer
+  * F4 - serial 0 data
+  * F5 - serial 0 status
+  * F6 - serial 1 data
+  * F7 - serial 1 status
+  * FA, FB - local int
+  * FC, FD - system int
+  * FF - control port
+  *
+  * Master ints
+  * int0 - monitor
+  * int1 - isis-II
+  * int2 - disk
+  * int3 - unused
+  * int4 - ice-80
+  * int5 - unused
+  * int6 - ice
+  * int7 - local int controller
+  *
+  * IOC ints
+  * int0 - SIO0 in
+  * int1 - SIO0 out
+  * int2 - SIO1 in
+  * int3 - SIO1 out
+  * int4 - 1ms RTC
+  * int5 - PIO
+  * int6 - IOC
+  * int7 - unused
+  */
+
+/* rightmost multimodule socket */
+
+_MCS0 = MPST01 & ((ADDR:B0) # (ADDR:B1) # (ADDR:B2) # (ADDR:B3) # (ADDR:B4) # (ADDR:B5) # (ADDR:B6) # (ADDR:B7));
+_MCS1 = MPST01 & ((ADDR:B8) # (ADDR:B9) # (ADDR:BA) # (ADDR:BB) # (ADDR:BC) # (ADDR:BD) # (ADDR:BE) # (ADDR:BF));
+
+/* leftmost multimodule socket */
+
+_MCS2 = MPST23 & ((ADDR:A0) # (ADDR:A1) # (ADDR:A2) # (ADDR:A3) # (ADDR:A4) # (ADDR:A5) # (ADDR:A6) # (ADDR:A7));
+_MCS3 = MPST23 & ((ADDR:A8) # (ADDR:A9) # (ADDR:AA) # (ADDR:AB) # (ADDR:AC) # (ADDR:AD) # (ADDR:AE) # (ADDR:AF));
+
+_DISK_CS = (ADDR:78) # (ADDR:79) # (ADDR:7A) # (ADDR:7B) # (ADDR:7C) # (ADDR:7D) # (ADDR:7E) # (ADDR:7F);
+_DISK_LOWER_ADDR_CS = (ADDR:79);
+_DISK_UPPER_ADDR_CS = (ADDR:7A);
+_DISK_RESET_CS = (ADDR:7F);
+_DISK_RESULT_BYTE_CS = (ADDR:7B);
+
+_CPUC_CS = (ADDR:FF);
+
+/*
+ * If there is no IOC, then nobody will be listening on C1. This will cause loader to wait 2.5S while
+ * XACK times out 255 times reading the C1 port. It's also possible we could get random data on C1.
+ *
+ * So what we do is answer C1 read with the same mailbox read as 79. This will return RESULT_TYPE, which
+ * is generally 0.
+ *
+ * To enable this behavior (breaks compatibility with IOC), do this:
+ *    _IOC_STAT_CS = (ADDR:C1);
+ *
+ * To disable behavior so you can use an IOC with this board, do this:
+ *    _IOC_STAT_CS = 'b'0;
+ */
+
+_IOC_STAT_CS = (ADDR:C1);
+
+/*
+ * Note: SBX bus specification says that MCS0-MCS3 should only be active for an IO request, not a memory
+ * request. This is done on the 80/24 board using IO/M signal from the CPU. The MWAIT behavior for the
+ * SBX-331 module depends on this -- it will cause an MWAIT whenever MCS is active, which will occur
+ * on memory transfers. We can resolve this on the 331 by jumpering E28-E29 instead of E27-E29.
+ *
+ * SBX bus specification also requires 25ns time between start/end of CS and start/end of IOR or IOW
+ * cycle.
+ *
+ * Cannot easily accommodate both of the above requirements at the same time. If I try to only do
+ * MCS on an IOR or IOW cycle, then I lose the 25ns time.
+ *
+ * Another idea would be to add IORC/IOWC inputs to XACK PLD, and just ignore MWAIT if not in an IO
+ * cycle.
+ */
+
+MCS0 = _MCS0;
+MCS1 = _MCS1;
+MCS2 = _MCS2;
+MCS3 = _MCS3;
+
+MMR = (_DISK_CS # _IOC_STAT_CS) & IORC;
+MMW = _DISK_CS & IOWC;
+
+/*
+ * WRTFLAG = indicates to DISK PLD that we have either started the operation by writing to
+ * the upper address or reset the controller.
+ */
+
+WRTFLAG = (_DISK_UPPER_ADDR_CS # _DISK_RESET_CS) & IOWC;
+
+/*
+ * Disk will always acknowledge RESET and READ_SUBSYSTEM_STATUS. Disk will only ack LOWER and UPPER
+ * command bytes or RESULT BYTE if it is not busy.
+ */
+
+WAITABLE = (_DISK_LOWER_ADDR_CS & IOWC) # (_DISK_UPPER_ADDR_CS & IOWC) # (_DISK_RESULT_BYTE_CS & IORC);
+
+CONFIGWR = _CPUC_CS & IOWC; /* write strobe to config reg */
+
+/*
+ * If added back... CPUC_CS I included in IOSEL. This will cause the MEM PLD to assert the buffers, but this really doesn't
+ * hurt anything because CPUC is write-only. CPU_CS doesn't trigger SLAVECS, but we still need to make it
+ * trigger XACK. So this is a hack to make that happen. In the future, consider including CONFIGWR as another
+ * input to XACK PLD, or stick some inverters in front of the 74LS259 and put it on the buffered non-inverted
+ * data bus.
+ */
+
+IOSEL = _MCS0 # _MCS1 # _MCS2 # _MCS3 # _DISK_CS # _CPUC_CS # _IOC_STAT_CS;
+

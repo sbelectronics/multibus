@@ -1,0 +1,68 @@
+Name disk;
+Partno G22V10#2;
+Revision;
+Date 09/1/2023;
+Designer Scott Baker;
+Company ;
+Location ;
+Assembly multibus ram address;
+Device G22V10;
+
+/* Inputs: */
+Pin 1  = NC1;  /* MMR ? */
+Pin 2  = PA0;
+Pin 3  = PA1;
+Pin 4  = PA2;
+Pin 5  = PA3;
+Pin 6  = !PSTB;
+Pin 7  = NC7;    /* D2IN ? */
+Pin 8  = NC8;    /* PINT ? */
+Pin 9  = A0;
+Pin 10 = A1;
+Pin 11 = A2;
+Pin 13 = !WRTFLAG;
+
+/* Outputs:  */
+Pin 23 = !PMR;
+Pin 22 = !PMW;
+Pin 21 = !PMRDR;
+Pin 20 = !PMWTR;
+Pin 19 = PLATAL;
+Pin 18 = PLATAH;
+Pin 17 = NC17;      /* D2OUT ? */
+Pin 16 = PENDING;   
+Pin 15 = RESREQ;    /* INT ? */
+Pin 14 = PD0B;
+
+FIELD MADDR = [A2..A0];
+
+FIELD PADDR = [PA3..PA0];
+
+_PBUSR = (PADDR:0) & PSTB;
+_PBUSW = (PADDR:1) & PSTB;
+_PLATAL = (PADDR:2) & PSTB;
+_PLATAH = (PADDR:3) & PSTB;
+_PREAD_PENDING = (PADDR:4) & PSTB;
+_PRESET_PENDING = (PADDR:5) & PSTB;
+_PREAD_RESREQ = (PADDR:6) & PSTB;
+_PRESET_RESREQ = (PADDR:7) & PSTB;
+_PMR = ((PADDR:8) # (PADDR:9) # (PADDR:A) # (PADDR:B)) & PSTB;
+_PMW = ((PADDR:C) # (PADDR:D) # (PADDR:E) # (PADDR:F)) & PSTB;
+
+_DISK_UPPER_ADDR_CS = (MADDR:2);
+_DISK_RESET_CS = (MADDR:7);
+
+PMR = _PMR;
+PMW = _PMW;
+PMRDR = _PBUSR;
+PMWTR = _PBUSW;
+PLATAL = _PLATAL;
+PLATAH = _PLATAH;
+
+PD0B.OE = _PREAD_PENDING # _PREAD_RESREQ;
+PD0B = (_PREAD_PENDING & PENDING) # (_PREAD_RESREQ & RESREQ);
+
+PENDING = (PENDING & !_PRESET_PENDING) # (WRTFLAG & _DISK_UPPER_ADDR_CS);
+RESREQ = (RESREQ & !_PRESET_RESREQ) # (WRTFLAG & _DISK_RESET_CS);
+
+
