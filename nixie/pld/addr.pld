@@ -1,0 +1,74 @@
+Name addr;
+Partno G22V10#2;
+Revision;
+Date 09/1/2023;
+Designer Scott Baker;
+Company ;
+Location ;
+Assembly multibus nixie address;
+Device G22V10;
+
+/* Inputs: */
+Pin 1  = CCLK;
+Pin 2  = A0;   /* NOTE: Least significant 3 addr bits are not needed */
+Pin 3  = A1;
+Pin 4  = A2;
+Pin 5  = A3;
+Pin 6  = A4;
+Pin 7  = A5;
+Pin 8  = A6;
+Pin 9  = A7;
+Pin 10 = IOWC;
+Pin 11 = IORC;
+Pin 13 = !MPST;
+
+/* Outputs:  */
+Pin 23 = !DIGLOAD;
+Pin 22 = BDIR;
+Pin 21 = !BUSEN;
+Pin 20 = TMP;
+Pin 19 = CLK01;
+Pin 18 = !XACK;
+Pin 17 = !MCS0;
+Pin 16 = !MCS1;
+Pin 15 = !MCS2;
+Pin 14 = !MCS3;
+
+FIELD ADDR = [A7..A0];
+
+/* rightmost multimodule socket */
+
+_MCS0 = MPST & ((ADDR:B0) # (ADDR:B1) # (ADDR:B2) # (ADDR:B3) # (ADDR:B4) # (ADDR:B5) # (ADDR:B6) # (ADDR:B7));
+_MCS1 = MPST & ((ADDR:B8) # (ADDR:B9) # (ADDR:BA) # (ADDR:BB) # (ADDR:BC) # (ADDR:BD) # (ADDR:BE) # (ADDR:BF));
+
+/* leftmost multimodule socket */
+
+_MCS2 = MPST & ((ADDR:A0) # (ADDR:A1) # (ADDR:A2) # (ADDR:A3) # (ADDR:A4) # (ADDR:A5) # (ADDR:A6) # (ADDR:A7));
+_MCS3 = MPST & ((ADDR:A8) # (ADDR:A9) # (ADDR:AA) # (ADDR:AB) # (ADDR:AC) # (ADDR:AD) # (ADDR:AE) # (ADDR:AF));
+
+_NIXIE_CS = (ADDR:9X);
+
+_ANYCS = _MCS0 # _MCS1 # _MCS2 # _MCS3 # _NIXIE_CS;
+_ANYOP = _ANYCS & (IORC # IOWC);
+
+MCS0 = _MCS0;
+MCS1 = _MCS1;
+MCS2 = _MCS2;
+MCS3 = _MCS3;
+
+DIGLOAD = _NIXIE_CS & IOWC;
+
+CLK01.D = _ANYOP;
+/* CLK12.D = CLK01 & TMP; */
+
+_XACK = CLK01;
+
+TMP = _XACK & _ANYOP; /* need temporary because producy term issue in XACK.OE */
+
+XACK = 'b'1;
+XACK.OE = TMP;
+ 
+BUSEN = _ANYOP # _XACK;
+BDIR = !(_ANYCS & IORC);
+
+
