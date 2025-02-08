@@ -14,6 +14,7 @@
 #define PIN_D7 23
 
 #define PIN_INT_RESET 2
+#define PIN_PDIR 3
 #define PIN_RESIN 8
 #define PIN_XACK 9
 #define PIN_WAIT 10
@@ -22,7 +23,7 @@
 #define PIN_STB 13
 #define PIN_IOR 14
 #define PIN_IOW 15
-#define PIN_XCY 24
+#define PIN_PENDING 24
 #define PIN_OVRD 25
 #define PIN_RSTB 26
 #define PIN_BCR1 27
@@ -90,12 +91,16 @@ static void _databus_config_read()
 {
   for (int i=0; i<8; i++) {
     gpioSetMode(datapins[i], PI_INPUT);
+    short_delay();
+    gpioWrite(PIN_PDIR, 1);   /* don't change latch pi side to outputs until after setting D0..D7 pin mode to input */
     gpioSetPullUpDown(datapins[i], PI_PUD_DOWN); // otherwise when power is off, reads may return unknown states
   }
 }
 
 static void _databus_config_write()
 {
+  gpioWrite(PIN_PDIR, 0);  /* make sure latch pi side is inputs before changing D0..D7 pin mode to output */
+  short_delay();
   for (int i=0; i<8; i++) {
     gpioSetMode(datapins[i], PI_OUTPUT);
   }
@@ -212,7 +217,25 @@ static void _write_mbox(uint16_t addr, uint16_t val)
 
 static uint16_t _read_pending()
 {
-  uint16_t v;
+  uint16_t v, last;
+  last = gpioRead(PIN_PENDING);
+  while (1) {
+    /*
+     * Just for safety's sake, make sure we read the same thing twice in a row 
+     * The only anomalies I have ever noted are edges that go from 0 to 1...
+     * ... which is probably fine.
+     */
+
+    short_delay();
+    v = gpioRead(PIN_PENDING);
+    if (v == last) {
+      return v;
+    } else {
+      /* printf("Anomaly detected in _read_pending: last=%d, v=%d\n", last, v); */
+    }
+    last = v;
+  }
+/*
   _select(REG_READ_PENDING);
   short_delay();
   _stb_down();
@@ -220,6 +243,7 @@ static uint16_t _read_pending()
   v = _data_read();
   _stb_up();
   return (v & 1);
+*/
 }
 
 static void _reset_pending()

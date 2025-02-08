@@ -135,6 +135,9 @@ def main():
         elif (cmd=="ireset"):
             diskface.intReset()
 
+        elif (cmd=="resetpending"):
+            diskface.resetPending()
+
         elif (cmd=="dumpmem"):
             if len(args)!=2:
                 print("missing start and/or end")

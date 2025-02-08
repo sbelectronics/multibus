@@ -17,6 +17,7 @@ PIN_D6=22
 PIN_D7=23
 
 PIN_INT_RESET = 2
+PIN_PDIR = 3
 PIN_RESIN = 8
 PIN_XACK = 9
 PIN_WAIT = 10
@@ -25,7 +26,7 @@ PIN_INT = 12
 PIN_STB = 13
 PIN_IOR = 14
 PIN_IOW = 15
-PIN_XCY = 24
+PIN_PENDING = 24
 PIN_OVRD = 25
 PIN_RSTB = 26
 PIN_BCR1 = 27
@@ -186,6 +187,9 @@ class DiskInterface:
         IO.setup(PIN_A2, IO.OUT)
         IO.setup(PIN_A3, IO.OUT)
 
+        IO.setup(PIN_PENDING, IO.IN, pull_up_down=IO.PUD_DOWN)
+
+        IO.setup(PIN_PDIR, IO.OUT)
         IO.setup(PIN_INT, IO.OUT)
         IO.setup(PIN_INT_RESET, IO.OUT)
         IO.setup(PIN_HRESET, IO.OUT)
@@ -202,6 +206,7 @@ class DiskInterface:
         IO.output(PIN_A0, 2)
         IO.output(PIN_A0, 3)
 
+        IO.output(PIN_PDIR, 1)   # Low on write, high on read
         IO.output(PIN_INT, 0)
         IO.output(PIN_HRESET, 0)
         IO.output(PIN_WAIT, 1)
