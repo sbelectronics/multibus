@@ -90,6 +90,7 @@ static void _databus_config_read()
 {
   for (int i=0; i<8; i++) {
     gpioSetMode(datapins[i], PI_INPUT);
+    gpioSetPullUpDown(datapins[i], PI_PUD_DOWN); // otherwise when power is off, reads may return unknown states
   }
 }
 
