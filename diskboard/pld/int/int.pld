@@ -1,0 +1,61 @@
+Name int;
+Partno G22V10#2;
+Revision;
+Date 09/1/2023;
+Designer Scott Baker;
+Company ;
+Location ;
+Assembly multibus disk int pld;
+Device G22V10;
+
+/* Inputs: */
+Pin 1  = NC1;
+Pin 2  = A0;
+Pin 3  = A1;
+Pin 4  = A2;
+Pin 5  = !MMR;
+Pin 6  = D2IN;
+Pin 7  = PINT;
+Pin 8  = !PINT_RESET;
+Pin 9  = PIRESET;
+Pin 10 = NC10;
+Pin 11 = NC11;
+Pin 13 = NC13;
+
+/* Outputs:  */
+Pin 23 = D2OUT;
+Pin 22 = !INT;
+Pin 21 = TMP_INT;
+Pin 20 = !INIT;
+Pin 19 = NC19;
+Pin 18 = NC18;
+Pin 17 = NC17;
+Pin 16 = NC16;
+Pin 15 = NC15;
+Pin 14 = NC14;
+
+FIELD ADDR = [A2..A0];
+
+_DISK_LOWER_ADDR_CS = (ADDR:1);
+_DISK_UPPER_ADDR_CS = (ADDR:2);
+_DISK_RESET_CS = (ADDR:7);
+_DISK_STATUS_CS = (ADDR:0);
+_DISK_RESULT_TYPE_CS = (ADDR:1);
+_DISK_RESULT_BYTE_CS = (ADDR:3);
+
+_INT_RESET = (_DISK_RESULT_TYPE_CS & MMR);
+
+D2OUT.OE = MMR;
+D2OUT = (_DISK_STATUS_CS & TMP_INT) # (!_DISK_STATUS_CS & D2IN);
+
+TMP_INT = (TMP_INT & !_INT_RESET & !PINT_RESET) # (PINT);
+
+/* For expediency in bodging, make INT an open-collector output.
+ * Could merge this logic into disk.pld without needing to do this...
+ */
+
+INT.OE = TMP_INT;
+INT = 'b'1;           /* note that this is inverted */
+
+INIT.OE = PIRESET;
+INIT = 'b'1;          /* note that this is inverted */
