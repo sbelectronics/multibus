@@ -1,0 +1,53 @@
+Name io;
+device g16v8as;
+Partno x;
+Revision;
+Date 09/1/2023;
+Designer Scott Baker;
+Company ;
+Location ;
+Assembly iSBX Display Module;
+
+/* Inputs: */
+Pin 1  = MHZ10;
+Pin 2  = !IOR;
+Pin 3  = !IOW;
+Pin 4  = !MCS0;
+Pin 5  = RESET;
+Pin 6  = MA0;
+Pin 7  = MA1;
+Pin 8  = MA2;
+Pin 9  = !MCS1;
+Pin 11 = NC11;
+
+Pin 10 = GND;
+
+Pin 20 = VCC;
+
+/* Outputs:  */
+Pin 19 = NC19;
+Pin 18 = !LOAD12;
+Pin 17 = !LOAD34;
+Pin 16 = !LOAD56;
+Pin 15 = DIR1;
+Pin 14 = !G1;
+Pin 13 = BICLK;
+Pin 12 = !BICLR;
+
+FIELD ADDR = [MA2..MA0];
+
+_DIG12CS = (ADDR:0) & MCS0;
+_DIG34CS = (ADDR:1) & MCS0;
+_DIG56CS = (ADDR:2) & MCS0;
+_BCS = (ADDR:3) & MCS0;
+_ICS = MCS0;                    /* reading anything on MCS0 will return the inputs */
+
+LOAD12 = _DIG12CS & IOW;
+LOAD34 = _DIG34CS & IOW;
+LOAD56 = _DIG56CS & IOW;
+
+DIR1 = 'b'0; /* B TO A, always */
+G1 = _ICS & IOR;
+
+BICLR = RESET;
+BICLK = !(_BCS & IOW);            /* clock BCS from H->L at start of write, and L->H at end of write */

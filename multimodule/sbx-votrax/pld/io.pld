@@ -1,0 +1,58 @@
+Name io;
+Partno G22V10#2;
+Revision;
+Date 09/1/2023;
+Designer Scott Baker;
+Company ;
+Location ;
+Assembly multibus ram address;
+Device G22V10;
+
+/* Inputs: */
+Pin 1  = RESET;
+Pin 2  = !IOR;
+Pin 3  = !IOW;
+Pin 4  = !MCS0;
+Pin 5  = MA0;
+Pin 6  = MA1;
+Pin 7  = REQ;
+Pin 8  = D6;
+Pin 9  = D7;
+Pin 10 = NC10;
+Pin 11 = NC11;
+Pin 13 = NC13;
+
+/* Outputs:  */
+Pin 23 = STB;
+Pin 22 = !RESETO;
+Pin 21 = D0_OUT;
+Pin 20 = I1;
+Pin 19 = I2;
+Pin 18 = INTR;
+Pin 17 = MUTE;
+Pin 16 = NC16;
+Pin 15 = NC15;
+Pin 14 = NC14;
+
+FIELD MADDR = [MA1..MA0];
+
+_V_CS = (MADDR:0) & MCS0;
+_MUTE_CS = (MADDR:1) & MCS0;
+
+STB = _V_CS & IOW;
+
+MUTE = (MUTE & (D7 # !_MUTE_CS # !IOW)) # (D7 & _MUTE_CS & IOW) # RESET;
+
+D0_OUT = REQ;
+D0_OUT.OE = _V_CS & IOR;
+
+INTR_OUT = 'b'1;
+INTR_OUT.OE = REQ;
+
+I1 = (I1 & !RESET & (D6 # !_V_CS # !IOW)) # (D6 & _V_CS & IOW & !RESET);
+I2 = (I2 & !RESET & (D7 # !_V_CS # !IOW)) # (D7 & _V_CS & IOW & !RESET);
+
+RESETO = RESET;
+
+
+

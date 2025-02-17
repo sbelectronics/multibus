@@ -1,0 +1,60 @@
+Name io;
+Partno G22V10#2;
+Revision;
+Date 09/1/2023;
+Designer Scott Baker;
+Company ;
+Location ;
+Assembly iSBX Speech Module;
+Device G22V10;
+
+/* Inputs: */
+Pin 1  = RESETI;
+Pin 2  = !IOR;
+Pin 3  = !IOW;
+Pin 4  = !MCS0;
+Pin 5  = MA0;
+Pin 6  = MA1;
+Pin 7  = MA2;
+Pin 8  = SBY;
+Pin 9  = !LRQ;
+Pin 10 = NC0;
+Pin 11 = NC1;
+Pin 13 = NC2;
+
+/* Outputs:  */
+Pin 23 = !ALD;
+Pin 22 = !RESETO;
+Pin 21 = D0;
+Pin 20 = !MPST;
+Pin 19 = MINTR0;
+Pin 18 = MINTR1;
+Pin 17 = MUTEO;
+Pin 16 = NC4;
+Pin 15 = NC5;
+Pin 14 = NC6;
+
+FIELD ADDR = [MA2..MA0];
+
+SPEECH_CS = (ADDR:2) & MCS0;
+
+ALD = SPEECH_CS & IOW;
+
+D0 = LRQ;
+D0.OE = SPEECH_CS & IOR;
+
+RESETO = RESETI;
+
+UNMUTE = (ADDR:4) & MCS0 & IOW & D0;
+MUTE = (ADDR:4) & MCS0 & IOW & (!D0);
+MUTEO = (RESETI & RESETO) # MUTE # (MUTEO & !UNMUTE);
+
+/* note - can be very sensitive to transients on RESETI, so
+ * the above qualifies both RESETI and RESETO, adding some
+ * gate delay.
+ */
+
+MPST = 'b'1;
+
+MINTR0 = 'b'0;
+MINTR1 = 'b'0;

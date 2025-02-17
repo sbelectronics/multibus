@@ -1,0 +1,60 @@
+Name io;
+Partno G22V10#2;
+Revision;
+Date 09/1/2023;
+Designer Scott Baker;
+Company ;
+Location ;
+Assembly iSBX PSG Module;
+Device G22V10;
+
+/* Inputs: */
+Pin 1  = RESETI;
+Pin 2  = !IOR;
+Pin 3  = !IOW;
+Pin 4  = !MCS0;
+Pin 5  = MA0;
+Pin 6  = MA1;
+Pin 7  = MA2;
+Pin 8  = NC6;
+Pin 9  = NC0;
+Pin 10 = NC1;
+Pin 11 = NC2;
+Pin 13 = NC3;
+
+/* Outputs:  */
+Pin 23 = BC1;
+Pin 22 = BDIR;
+Pin 21 = D0;
+Pin 20 = !MPST;
+Pin 19 = MINTR0;
+Pin 18 = MINTR1;
+Pin 17 = !RESETO;
+Pin 16 = MUTEO;
+Pin 15 = NC5;
+Pin 14 = NC4;
+
+FIELD ADDR = [MA2..MA0];
+
+IO_WRT_REG = (ADDR:5) & MCS0 & IOW;
+IO_WRT_VAL = (ADDR:6) & MCS0 & IOW;
+IO_RD_VAL = (ADDR:6) & MCS0 & IOR;
+
+RESETO = RESETI;
+
+UNMUTE = (ADDR:7) & MCS0 & IOW & D0;
+MUTE = (ADDR:7) & MCS0 & IOW & (!D0);
+MUTEO = (RESETI & RESETO) # MUTE # (MUTEO & !UNMUTE);
+
+/* note - can be very sensitive to transients on RESETI, so
+ * the above qualifies both RESETI and RESETO, adding some
+ * gate delay.
+ */
+
+MPST = 'b'1;
+
+MINTR0 = 'b'0;
+MINTR1 = 'b'0;
+
+BDIR = IO_WRT_REG # IO_WRT_VAL;
+BC1 = IO_WRT_REG # IO_RD_VAL;
