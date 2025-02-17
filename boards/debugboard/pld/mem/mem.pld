@@ -1,0 +1,48 @@
+Name mem;
+Partno G22V10#2;
+Revision;
+Date 09/1/2023;
+Designer Scott Baker;
+Company ;
+Location ;
+Assembly multibus ram mem;
+Device G22V10;
+
+/* Inputs: */
+Pin 1  = NC1;
+Pin 2  = NC2;
+Pin 3  = NC3;
+Pin 4  = NC4;
+Pin 5  = NC5;
+Pin 6  = !IOSEL2;
+Pin 7  = !IOSEL1;
+Pin 8  = !XACK;
+Pin 9  = NC9;
+Pin 10 = NC10;
+Pin 11 = IORC;
+Pin 13 = IOWC;
+
+/* Outputs:  */
+Pin 23 = NC23;
+Pin 22 = NC22;
+Pin 21 = NC21;
+Pin 20 = NC20;
+Pin 19 = !BOARDCS;
+Pin 18 = BDIR;
+Pin 17 = NC17;
+Pin 16 = !BUSEN;
+Pin 15 = NC15;
+Pin 14 = NC14;
+
+_IOSEL = IOSEL1 # IOSEL2;
+
+_IORD = _IOSEL & IORC;
+_IOWR = _IOSEL & IOWC;
+
+_BOARDCS = _IORD # _IOWR;
+
+_EXTW = (XACK & IOWC);
+
+BOARDCS = _BOARDCS;
+BUSEN = 'b'1;  /* _BOARDCS # _EXTW; */
+BDIR = !_IORD;
