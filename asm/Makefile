@@ -1,7 +1,7 @@
 # Target. Set this to either idps or rambrd. This will determine
 # which port range is used for the multimodules.
 
-TARGET ?= ipds
+TARGET ?= unspecified
 
 # Path to the ISIS simulator, which you can find at:
 # https://bionic.bloovis.com/cgit/isis/. The simulator is written
@@ -30,6 +30,10 @@ export ISIS_F3=../simulator/isis/intel/asm80
 .PHONY: ports
 .PHONY: ipds
 .PHONY: rambrd
+
+unspecified:
+	@echo "Please set TARGET to either ipds or rambrd"
+	@exit 1
 
 ipds:
 	echo "; edit ipds.inc instead of this file" > ports.inc
