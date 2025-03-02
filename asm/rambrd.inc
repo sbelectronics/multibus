@@ -4,6 +4,24 @@
 
 DOATTCH EQU     0
 
+; Ports
+;  00-0F - multimodule on debug board
+;  10-1F - multimodule on debug board
+;  20-2F - multimodule on debug board / left multimodule on nixie board
+;  30-3F - multimodule on debug board
+;  40-4F - multimodule on debug board
+;  50-5F - multimodule on debug board / middle multimodule on nixie board
+;  68-6F - multibus/ISIS hard drive board
+;  78-7F - multibus/ISIS first floppy board
+;  88-8F - multibus/ISIS second floppy board
+;  90-9F - nixie tube board
+;  A0-AF - left multimodule on diskboard/ramboard
+;  B0-BF - middle multimodule on diskboard/ramboard
+;  C0-CF - multimodule on 80/24A (conflicts with C0/C1 IOC on ISIS)
+;  D0-DF - peripherals on 80/24A
+;  E0-EF - peripherals on 80/24A
+;  F0-FF - mutlimodule on 80/24A (conflicts with config port, serial ports, and interrupt on ISIS)
+
 ; CSG Multimodule
 
 CSGPORT	EQU	0B3H
@@ -36,11 +54,18 @@ SERBAS  EQU     0B0H
 
 ; Digitalker multimodule
 
-DIGOUT  EQU     0B0H
-DIGST   EQU     0B0H
+DIGBASE EQU     050H
+DIGOUT  EQU     DIGBASE
+DIGST   EQU     DIGBASE
+DIGMUT  EQU     DIGBASE+1
 
 ; Votrax multimovule
 
 VTXPHN  EQU     0B0H
 VTXRDY  EQU     0B0H
 VTXMUT  EQU     0B1H
+
+; Nixie tube clock board
+
+NIXBAS	EQU	090H
+

@@ -238,8 +238,8 @@ gps.obj: ports gps.asm
 gpslib.obj: ports gpslib.asm
 	$(ISIS) :f3:asm80 gpslib.asm
 
-nixclk: nixclk.obj conio.obj args.obj putil.obj gpslib.obj rtclib.obj
-	$(ISIS) :f2:link nixclk.obj,conio.obj,args.obj,putil.obj,gpslib.obj,rtclib.obj,syspds.lib to nixclk.lnk MAP
+nixclk: nixclk.obj conio.obj args.obj putil.obj gpslib.obj rtclib.obj diglib.obj
+	$(ISIS) :f2:link nixclk.obj,conio.obj,args.obj,putil.obj,gpslib.obj,rtclib.obj,diglib.obj,syspds.lib to nixclk.lnk MAP
 	$(ISIS) :f2:locate nixclk.lnk to nixclk PURGE MAP PRINT\(nixclk.map\)
 
 nixclk.hex: nixclk
@@ -248,8 +248,8 @@ nixclk.hex: nixclk
 nixclk.obj: ports nixclk.asm
 	$(ISIS) :f3:asm80 nixclk.asm
 
-dig: dig.obj conio.obj putil.obj diglib.obj
-	$(ISIS) :f2:link dig.obj,conio.obj,putil.obj,diglib.obj,syspds.lib to dig.lnk MAP
+dig: dig.obj conio.obj args.obj putil.obj diglib.obj
+	$(ISIS) :f2:link dig.obj,conio.obj,args.obj,putil.obj,diglib.obj,syspds.lib to dig.lnk MAP
 	$(ISIS) :f2:locate dig.lnk to dig PURGE MAP PRINT\(dig.map\)
 
 dig.hex: dig

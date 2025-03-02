@@ -44,3 +44,8 @@ DIGST   EQU     070H
 VTXPHN  EQU     070H
 VTXRDY  EQU     070H
 VTXMUT  EQU     071H
+
+; Nixie tube clock board
+; NOTE: Not supported in iPDS, but copied here for consistency
+
+NIXBAS	EQU	70H
