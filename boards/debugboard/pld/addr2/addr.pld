@@ -1,0 +1,59 @@
+Name addr;
+Partno G22V10#2;
+Revision;
+Date 09/1/2023;
+Designer Scott Baker;
+Company ;
+Location ;
+Assembly multibus ram address;
+Device G22V10;
+
+/* Inputs: */
+Pin 1  = NC1;
+Pin 2  = A0;
+Pin 3  = A1;
+Pin 4  = A2;
+Pin 5  = A3;
+Pin 6  = A4;
+Pin 7  = A5;
+Pin 8  = A6;
+Pin 9  = A7;
+Pin 10 = !MPSTAB;
+Pin 11 = !MPST67;
+Pin 13 = !MPST89;
+
+/* Outputs:  */
+Pin 23 = NC23;
+Pin 22 = !IOSEL;
+Pin 21 = NC21;
+Pin 20 = NC20;
+Pin 19 = !MCSA;
+Pin 18 = !MCSB;
+Pin 17 = !MCS6;
+Pin 16 = !MCS7;
+Pin 15 = !MCS8;
+Pin 14 = !MCS9;
+
+FIELD ADDR = [A7..A0];
+
+/* rightmost multimodule socket */
+
+_MCS6 = MPST67 & ((ADDR:40) # (ADDR:41) # (ADDR:42) # (ADDR:43) # (ADDR:44) # (ADDR:45) # (ADDR:46) # (ADDR:47));
+_MCS7 = MPST67 & ((ADDR:48) # (ADDR:49) # (ADDR:4A) # (ADDR:4B) # (ADDR:4C) # (ADDR:4D) # (ADDR:4E) # (ADDR:4F));
+
+/* leftmost multimodule socket */
+
+_MCS8 = MPST89 & ((ADDR:30) # (ADDR:31) # (ADDR:32) # (ADDR:33) # (ADDR:34) # (ADDR:35) # (ADDR:36) # (ADDR:37));
+_MCS9 = MPST89 & ((ADDR:38) # (ADDR:39) # (ADDR:3A) # (ADDR:3B) # (ADDR:3C) # (ADDR:3D) # (ADDR:3E) # (ADDR:3F));
+
+_MCSA = MPSTAB & ((ADDR:50) # (ADDR:51) # (ADDR:52) # (ADDR:53) # (ADDR:54) # (ADDR:55) # (ADDR:56) # (ADDR:57));
+_MCSB = MPSTAB & ((ADDR:58) # (ADDR:59) # (ADDR:5A) # (ADDR:5B) # (ADDR:5C) # (ADDR:5D) # (ADDR:5E) # (ADDR:5F));
+
+MCS6 = _MCS6;
+MCS7 = _MCS7;
+MCS8 = _MCS8;
+MCS9 = _MCS9;
+MCSA = _MCSA;
+MCSB = _MCSB;
+
+IOSEL = _MCS6 # _MCS7 # _MCS8 # _MCS9 # _MCSA # _MCSB;

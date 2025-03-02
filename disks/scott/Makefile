@@ -17,6 +17,12 @@ scott.img:
 	$(ISISTOOL) -f scott.img add $(APPS)/rtc
 	$(ISISTOOL) -f scott.img add $(APPS)/type
 	$(ISISTOOL) -f scott.img add $(APPS)/hang
+	$(ISISTOOL) -f scott.img add $(APPS)/nixclk
+	$(ISISTOOL) -f scott.img add $(APPS)/votrax
+	$(ISISTOOL) -f scott.img add $(APPS)/drives
+	$(ISISTOOL) -f scott.img add $(APPS)/sertes
+	$(ISISTOOL) -f scott.img add $(APPS)/coptes
+	$(ISISTOOL) -f scott.img add $(APPS)/dig
 	$(ISISTOOL) -f scott.img add ../../isistool/testdata/cntry.txt
 
 scottdd.img:
@@ -33,6 +39,12 @@ scottdd.img:
 	$(ISISTOOL) -f scottdd.img add $(APPS)/rtc
 	$(ISISTOOL) -f scottdd.img add $(APPS)/type
 	$(ISISTOOL) -f scottdd.img add $(APPS)/hang
+	$(ISISTOOL) -f scottdd.img add $(APPS)/nixclk
+	$(ISISTOOL) -f scottdd.img add $(APPS)/votrax
+	$(ISISTOOL) -f scottdd.img add $(APPS)/drives
+	$(ISISTOOL) -f scottdd.img add $(APPS)/sertes
+	$(ISISTOOL) -f scottdd.img add $(APPS)/coptes
+	$(ISISTOOL) -f scottdd.img add $(APPS)/dig
 	$(ISISTOOL) -f scottdd.img add ../../isistool/testdata/cntry.txt
 
 scottdd_patched.img: scottdd.img
