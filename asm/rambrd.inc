@@ -22,6 +22,11 @@ DOATTCH EQU     0
 ;  E0-EF - peripherals on 80/24A
 ;  F0-FF - mutlimodule on 80/24A (conflicts with config port, serial ports, and interrupt on ISIS)
 
+; interrupts
+
+INTMSK  EQU     0DBH
+INTACK  EQU     0DAH
+
 ; CSG Multimodule
 
 CSGPORT	EQU	0B3H
@@ -64,6 +69,11 @@ DIGMUT  EQU     DIGBASE+1
 VTXPHN  EQU     0B0H
 VTXRDY  EQU     0B0H
 VTXMUT  EQU     0B1H
+
+TMSBASE EQU     0B0H
+TMSOUT  EQU     TMSBASE
+TMSIN   EQU     TMSBASE
+TMSMUT  EQU     TMSBASE+1
 
 ; Nixie tube clock board
 
