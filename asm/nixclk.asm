@@ -42,6 +42,7 @@ $macrofile
 
 	EXTRN DIGSTP
 	EXTRN DIGNUM
+	EXTRN DIGNLZ
 	EXTRN DIGSTR
 	EXTRN MAM
 	EXTRN MPM
@@ -60,6 +61,8 @@ NIXM1	EQU	NIXBAS+4
 NIXS10	EQU	NIXBAS+6
 NIXS1	EQU	NIXBAS+7
 
+IVEC	EQU	008H		; vector address for int1
+
 DTZ	EQU	-8		; Default timezone is UTC-8
 
 ORIG:	LXI	SP, STACK
@@ -67,6 +70,7 @@ ORIG:	LXI	SP, STACK
 	CALL	DOFLAG
 
 	CALL	SETUP		; Setup the GPS or RTC
+	CALL	INTSTP		; Install interrupt handler
 
 	MVI	A, DTZ		; Set default time zone for GPS
 	STA	TZONE
@@ -85,7 +89,11 @@ QUIET:
 
 	; CQUIT - see if it's quittin' time
 
-CQUIT:	CALL	CSTS		; key pending?
+CQUIT:	LDA	BTNSIG		; button interrupt signaled
+	ORA	A
+	JNZ	KEYS		; yes - say time
+
+	CALL	CSTS		; key pending?
 	ORA	A
 	RZ			; No Key
 	CALL	CI
@@ -103,9 +111,12 @@ CQUIT:	CALL	CSTS		; key pending?
 	JZ	KEYS
 	RET
 KEYS:	CALL	SAYTIM
+	MVI	A,0
+	STA	BTNSIG
 	RET
 
 LEAVE:	CALL	PCRLF
+	CALL	INTTD		; teardown interrupt handler
 	CALL 	EXIT
 
 	; GETTIME - get the current time
@@ -212,7 +223,60 @@ SAYTM0:	LXI	D, MTIME
 	CALL	DIGSTR
 	CALL	DIGNUM
 	LDA	MIN
-	CALL	DIGNUM
+	ORA	A
+	RZ			; If zero hours no need to say
+	CALL	DIGNLZ
+	RET
+
+; INTBTN - interrupt called on button push
+
+INTBTN: PUSH	PSW		; should start with ints disabled
+	MVI	A,1
+	STA	BTNSIG
+	MVI	A,20H
+	OUT	INTACK
+	POP	PSW
+	EI
+	RET
+
+; INTSTP - interrupt setup
+
+INTSTP:	LDA	IVEC		; save the in11 vector to IV0...IV2
+	STA	IV0
+	LDA	IVEC+1
+	STA	IV1
+	LDA	IVEC+2
+	STA	IV2
+
+	LDA	JMPI		; load the JMP INTBTN instruction
+	STA	IVEC		; and write it to the int1 vector
+	LDA	JMPI+1
+	STA	IVEC+1
+	LDA	JMPI+2
+	STA	IVEC+2
+
+	DI			; disable while touch the intmask
+	IN	INTMSK
+	ANI	0FDH		; enable int1
+	OUT	INTMSK
+	EI
+	RET
+JMPI:	JMP	INTBTN		; instruction we will stick in int2 vector
+
+; INTTD - interrupt teardown
+
+INTTD:	DI			; disable while we touch the intvec
+	IN	INTMSK
+	ORI	002H		; disable int1
+	OUT	INTMSK
+
+	LDA	IV0		; restore IV0..IVT to int1 vector
+	STA	IVEC
+	LDA	IV1
+	STA	IVEC+1
+	LDA	IV2
+	STA	IVEC+2
+	EI
 	RET
 
 GPSST:  DB	0		; state
@@ -222,5 +286,9 @@ SEC:	DB	0
 LSTSEC:	DB	0
 LSTMIN: DB	0FFH
 TZONE:	DB	0
+BTNSIG: DB	0
+IV0: 	DB	0		; saved contents of int1 vector
+IV1:	DB	0
+IV2:	DB	0
 
 	END	ORIG
