@@ -1,5 +1,16 @@
 $macrofile
 
+;	TITLE	'vm7tim`
+;	Scott Baker, www.smbaker.com
+;
+;	Routines for using the TMS5220 speech synthesizer with the
+;	VM71003 "time" speech rom to speak various numbers and the
+;	time.
+;
+;	VSM71003 is hard to find, so rather than use the actual ROM.
+;	we put the speech data directly into the program, then
+;	use speak external to speak it.
+
 	EXTRN	THE
 	EXTRN	TIME
 	EXTRN	IS
@@ -41,6 +52,8 @@ $macrofile
 	PUBLIC	V7NUM
 	PUBLIC	V7NLZ
 	PUBLIC	V7TTIS
+	PUBLIC	V7AM
+	PUBLIC	V7PM
 
 	CSEG
 
@@ -56,20 +69,20 @@ V7NUM:	PUSH	PSW
 	CPI	20
 	JNC	S20
 	JMP	SAYLT
-S50:	PUSH	PSW
-	SUI	50
+S50:	SUI	50
+	PUSH	PSW
 	LXI	D, FIFTY
 	JMP	SAYGT
-S40:	PUSH	PSW
-	SUI	40
+S40:	SUI	40
+	PUSH	PSW
 	LXI	D, FOURTY
 	JMP	SAYGT
-S30:	PUSH	PSW
-	SUI	30		; save A-30
+S30:	SUI	30		; save A-30
+	PUSH	PSW
 	LXI	D, THIRTY
 	JMP	SAYGT
-S20:	PUSH	PSW
-	SUI	20		; save A-20
+S20:	SUI	20		; save A-20
+	PUSH	PSW
 	LXI	D, TWENTY
 	JMP	SAYGT
 SAYGT:	CALL	TMSEXT
@@ -86,8 +99,14 @@ SAYLT:	ORA	A		; say for < 20
 	MOV	A,D		; Carry into high byte
 	ACI	0
 	MOV	D,A
+	LDAX	D
+	MOV	B,A
+	INX	D
+	LDAX	D
+	MOV	D,A
+	MOV	E,B
 
-SAYN:	CALL	TMSEXT
+	CALL	TMSEXT
 	JMP	SAYOUT
 SAYZ:				; nothing to say for zero
 SAYOUT:
@@ -109,6 +128,14 @@ V7TTIS:	LXI	D, THE
 	LXI	D, TIME
 	CALL	TMSEXT
 	LXI	D, IS
+	CALL	TMSEXT
+	RET
+
+V7AM:	LXI	D, AM
+	CALL	TMSEXT
+	RET
+
+V7PM:	LXI	D, PM
 	CALL	TMSEXT
 	RET
 

@@ -304,8 +304,8 @@ votrax.obj: ports votrax.asm
 vtxlib.obj: ports vtxlib.asm
 	$(ISIS) :f3:asm80 vtxlib.asm
 
-tms: tms.obj conio.obj args.obj putil.obj tmslib.obj
-	$(ISIS) :f2:link tms.obj,conio.obj,args.obj,putil.obj,tmslib.obj,syspds.lib to tms.lnk MAP
+tms: tms.obj conio.obj args.obj putil.obj tmslib.obj vm7dat.obj vm7tim.obj
+	$(ISIS) :f2:link tms.obj,conio.obj,args.obj,putil.obj,tmslib.obj,vm7dat.obj,vm7tim.obj,syspds.lib to tms.lnk MAP
 	$(ISIS) :f2:locate tms.lnk to tms PURGE MAP PRINT\(tms.map\)
 
 tms.hex: tms
@@ -317,10 +317,10 @@ tms.obj: ports tms.asm
 tmslib.obj: ports tmslib.asm
 	$(ISIS) :f3:asm80 tmslib.asm
 
-vm7103.obj:
-	$(ISIS) :f3:asm80 vm7103.asm
+vm7dat.obj: vm7dat.asm
+	$(ISIS) :f3:asm80 vm7dat.asm
 
-vm7tim.obj:
+vm7tim.obj: vm7tim.asm
 	$(ISIS) :f3:asm80 vm7tim.asm
 
 clean:

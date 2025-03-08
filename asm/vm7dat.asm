@@ -1,5 +1,11 @@
 $macrofile
 
+;	TITLE	'vm7dat`
+;	Scott Baker, www.smbaker.com
+;
+;	Data for the VM71003 "time" speech ROM. The ROM is hard to find,
+;	so build the data directly into the program.
+
 	PUBLIC	THE
 	PUBLIC	TIME
 	PUBLIC	IS
@@ -35,6 +41,8 @@ $macrofile
 	PUBLIC	AFTERNOON
 	PUBLIC	EVENING
 	PUBLIC	PAUSE
+
+	CSEG
 
 THE:
 	DW	0022H

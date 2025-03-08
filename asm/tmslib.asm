@@ -1,12 +1,9 @@
 $macrofile
 
-;	TITLE	'rtclib`
+;	TITLE	'tmslib`
 ;	Scott Baker, www.smbaker.com
 ;
-; 	Library for using MSM5832 RTC IC connected via 8255
-;
-;	Expects externally defined HOUR, MIN, SEC. Each one byte to
-;	hold time from RTCTIM.
+; 	Library for using TMS5220 speech synthesizer
 
 
 	PUBLIC  TMSSTP
@@ -139,6 +136,14 @@ TMSADR: MOV	A,C
 	; TMSEXT - speak external
 	;
 	; DE contains speech data. First word is the length.
+	;
+	; Following guidelines on the Internet, we send 16 bytes to start. Then
+	; everytime the buffer becomes less than half full, we send the next 8
+	; bytes. There might be a remainder if the number of bytes is not divisible
+	; by 8, so we send that too.
+	;
+	; Note: Assumes length is less than 256 bytes. Fix this as soon as we encounter
+	; a bigger sample...
 
 TMSEXT:	CALL	TMSWAT		; wait for not speaking
 
