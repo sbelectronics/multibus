@@ -11,6 +11,7 @@ $macrofile
 	PUBLIC	TMSADR
 	PUBLIC	TMSDLY
 	PUBLIC	TMSEXT
+	PUBLIC	TMSMTE
 
 	EXTRN	PHEXA
 
@@ -30,6 +31,12 @@ ROMADDR	EQU	00FH
 TMSSTP:	MVI	A,00H		; Unmute by default
 	OUT	TMSMUT
 	JMP	TMSRST
+	RET
+
+	; TMSMTE - turns on mute
+
+TMSMTE:	MVI	A,01H
+	OUT	TMSMUT
 	RET
 
 	; TMSDLY - sometimes a little delay can be helpful
@@ -77,7 +84,7 @@ TMSWRD:	CALL	TMSWAT
 TMSSTR: PUSH	PSW
 	PUSH	B
 TMSSLP:	LDAX	D		; load low bytes
-	;CALL	TMSDLY
+	CALL	TMSDLY
 	MOV	C,A		; save in C
 	INX	D
 	LDAX	D		; load high byte
