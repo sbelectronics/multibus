@@ -6,6 +6,8 @@ $macrofile
 ;	Data for the VM71003 "time" speech ROM. The ROM is hard to find,
 ;	so build the data directly into the program.
 
+	NAME	VM7DAT
+
 	PUBLIC	THE
 	PUBLIC	TIME
 	PUBLIC	IS

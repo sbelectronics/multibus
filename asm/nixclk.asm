@@ -23,6 +23,7 @@ $macrofile
 	EXTRN FLAGD
 	EXTRN FLAGG
 	EXTRN FLAGQ
+	EXTRN FLAGT
 
 	EXTRN PHEXA
 	EXTRN PCRLF
@@ -47,6 +48,13 @@ $macrofile
 	EXTRN MAM
 	EXTRN MPM
 	EXTRN MTIME
+
+	EXTRN TMSSTP
+	EXTRN V7NUM
+	EXTRN V7NLZ
+	EXTRN V7TTIS
+	EXTRN V7AM
+	EXTRN V7PM
 
 	STKLN	100H				; Size of stack segment
 
@@ -158,11 +166,15 @@ SETUP:	LDA	FLAGG
 	CALL	GPSSTP
 	JMP	SETUP0
 NOTGPS:	CALL	RTCSTP
-SETUP0: LDA	FLAGD
+SETUP0: LDA	FLAGD		; digitalker flag specified?
 	CPI	0FFH
 	JZ	NOTDIG
-	CALL	DIGSTP
-NOTDIG:
+	CALL	DIGSTP		; setup the digitalker
+NOTDIG: LDA	FLAGT		; TMS-5220 flag specified?
+	CPI	0FFH
+	JZ	NOTTMS
+	CALL	TMSSTP		; setup the TMS-5220
+NOTTMS:
 	RET
 
 	; NIXTIM - output current time to nixies
@@ -200,32 +212,61 @@ PRNTIM:	LDA	HOUR
 	CALL	PRNDEC
 	RET
 
-	; SAYTIM - say time on digitalker
+	; SAYTIM - say time on digitalker or TMS-5220
 
 SAYTIM: LDA	FLAGD
 	CPI	0FFH
-	RZ			; No digitalker flag
+	JNZ	SAYDIG
+	LDA	FLAGT
+	CPI	0FFH
+	JNZ	SAYTMS
+	RET
 
-	LDA	HOUR
+	; SAYDIG - say time on digitalker
+
+SAYDIG:	LDA	HOUR
 	CPI	13
 	JC	SAYAM
 	SUI	12
-	CALL	SAYTM0
-	LXI	D, MPM
+	CALL	SAYDG0
+	LXI	D, MPM		; say PM
 	CALL	DIGSTR
 	RET
-SAYAM:	CALL	SAYTM0
-	LXI	D, MAM
+SAYAM:	CALL	SAYDG0
+	LXI	D, MAM		; say AM
 	CALL	DIGSTR
 	RET
 
-SAYTM0:	LXI	D, MTIME
+SAYDG0:	LXI	D, MTIME	; say the time
 	CALL	DIGSTR
 	CALL	DIGNUM
 	LDA	MIN
 	ORA	A
 	RZ			; If zero hours no need to say
 	CALL	DIGNLZ
+	RET
+
+	; SAYTMS - say time on tms-5220
+
+SAYTMS:	LDA	HOUR
+	CPI	13
+	JC	SAYAM
+	SUI	12
+	CALL	SAYTM0
+	CALL	V7PM		; say PM
+	RET
+SAYTAM:	CALL	SAYTM0
+	CALL	V7AM		; say AM
+	RET
+
+SAYTM0:	PUSH	PSW
+	CALL	V7TTIS		; say "The Time Is"
+	POP	PSW
+	CALL	V7NUM
+	LDA	MIN
+	ORA	A
+	RZ			; If zero hours no need to say
+	CALL	V7NLZ
 	RET
 
 ; INTBTN - interrupt called on button push

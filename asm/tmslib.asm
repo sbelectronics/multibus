@@ -5,6 +5,7 @@ $macrofile
 ;
 ; 	Library for using TMS5220 speech synthesizer
 
+	NAME	TMSLIB
 
 	PUBLIC  TMSSTP
 	PUBLIC	TMSSTR

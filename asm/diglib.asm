@@ -8,6 +8,8 @@ $macrofile
 ;	Expects externally defined HOUR, MIN, SEC. Each one byte to
 ;	hold time from RTCTIM.
 
+	NAME	DIGLIB
+
 	PUBLIC	DIGSTP
 	PUBLIC	DIGWRD
 	PUBLIC	DIGSTR

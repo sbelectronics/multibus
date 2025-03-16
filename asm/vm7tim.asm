@@ -11,6 +11,8 @@ $macrofile
 ;	we put the speech data directly into the program, then
 ;	use speak external to speak it.
 
+	NAME	VM7TIM
+
 	EXTRN	THE
 	EXTRN	TIME
 	EXTRN	IS
