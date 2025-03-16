@@ -9,7 +9,7 @@ Assembly multibus ram mem;
 Device G22V10;
 
 /* Inputs: */
-Pin 1  = NC1;
+Pin 1  = CCLK;
 Pin 2  = NC2;
 Pin 3  = NC3;
 Pin 4  = NC4;
@@ -17,13 +17,13 @@ Pin 5  = NC5;
 Pin 6  = !IOSEL2;
 Pin 7  = !IOSEL1;
 Pin 8  = !XACK;
-Pin 9  = NC9;
-Pin 10 = NC10;
+Pin 9  = MRDC;
+Pin 10 = MWTC;
 Pin 11 = IORC;
 Pin 13 = IOWC;
 
 /* Outputs:  */
-Pin 23 = NC23;
+Pin 23 = !ACTIVITY;
 Pin 22 = NC22;
 Pin 21 = NC21;
 Pin 20 = NC20;
@@ -46,3 +46,13 @@ _EXTW = (XACK & IOWC);
 BOARDCS = _BOARDCS;
 BUSEN = 'b'1;  /* _BOARDCS # _EXTW; */
 BDIR = !_IORD;
+
+/* As long as IORC and IOWC are not active, ACTIVITY
+ * will get a constant stream of pulses. This will continously
+ * retrigger the timeout circuit in the 123.The debug board
+ * only catches events when the signals are active (low), so
+ * when a signal is low, activity will stop toggling, and the
+ * debug board will eventually trigger when the timeout expires.
+ */
+
+ACTIVITY = (!IORC & !IOWC & !MRDC & !MWTC & CCLK);

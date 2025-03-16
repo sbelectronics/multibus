@@ -30,7 +30,7 @@ Pin 20 = CLK34;
 Pin 19 = CLK45;
 Pin 18 = CLK56;
 Pin 17 = CLK67;
-Pin 16 = !ACTIVITY;
+Pin 16 = CLK78;
 Pin 15 = !XACK;
 Pin 14 = TMP;
 
@@ -52,12 +52,7 @@ CLK56.D = CLK45 & TMP;
 
 CLK67.D = CLK56 & TMP;
 
+CLK78.D = CLK67 & TMP;
+
 XACK = 'b'1;
 XACK.OE = CLKJMP & TMP;
-
-/* As long as IORC and IOWC are not active, ACTIVITY
- * will get a constant stream of pulese. This will continously
- * retrigger the timeout circuit in the 123.
- */
-
-ACTIVITY = (!IORC & !IOWC & CCLK);
