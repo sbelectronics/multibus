@@ -1,0 +1,88 @@
+Name addr;
+Partno G22V10#2;
+Revision;
+Date 09/1/2023;
+Designer Scott Baker;
+Company ;
+Location ;
+Assembly multibus nixie address;
+Device G22V10;
+
+/*
+ * Note: requires modification to v1 board for this to function.
+ *
+ * 1) Cut trace from A0 to U$6 (ATF22V10-ADDR) pin 2.
+ * 2) Add jumper from U$6 (ATD22V10-ADDR) to U$20 (right bottom multimodule) pin 16
+ * 3) Add jumper from U$20 pin 16 to U$19 pin 16
+ * 4) Add 1K resistor from U$19 pin 16 to VCC
+ *
+ * This will write the MWAIT from the middle multibus slots to pin 2 on the
+ * address PLD.
+ *
+ * Optionally do the same for pin 3 on the address PLD and update the TMP equation
+ * below.
+ */
+
+/* Inputs: */
+Pin 1  = CCLK;
+Pin 2  = !MWAIT01;
+Pin 3  = !MWAIT23;
+Pin 4  = A2;
+Pin 5  = A3; /* NOTE: Least significant 3 addr bits are not needed */
+Pin 6  = A4;
+Pin 7  = A5;
+Pin 8  = A6;
+Pin 9  = A7;
+Pin 10 = IOWC;
+Pin 11 = IORC;
+Pin 13 = !MPST;
+
+/* Outputs:  */
+Pin 23 = !DIGLOAD;
+Pin 22 = BDIR;
+Pin 21 = !BUSEN;
+Pin 20 = TMP;
+Pin 19 = CLK01;
+Pin 18 = !XACK;
+Pin 17 = !MCS0;
+Pin 16 = !MCS1;
+Pin 15 = !MCS2;
+Pin 14 = !MCS3;
+
+FIELD ADDR = [A7..A3];
+
+/* rightmost multimodule socket */
+
+_MCS0 = MPST & ((ADDR:50) # (ADDR:51) # (ADDR:52) # (ADDR:53) # (ADDR:54) # (ADDR:55) # (ADDR:56) # (ADDR:57));
+_MCS1 = MPST & ((ADDR:58) # (ADDR:59) # (ADDR:5A) # (ADDR:5B) # (ADDR:5C) # (ADDR:5D) # (ADDR:5E) # (ADDR:5F));
+
+/* leftmost multimodule socket */
+
+_MCS2 = MPST & ((ADDR:20) # (ADDR:21) # (ADDR:22) # (ADDR:23) # (ADDR:24) # (ADDR:25) # (ADDR:26) # (ADDR:27));
+_MCS3 = MPST & ((ADDR:28) # (ADDR:29) # (ADDR:2A) # (ADDR:2B) # (ADDR:2C) # (ADDR:2D) # (ADDR:2E) # (ADDR:2F));
+
+_NIXIE_CS = (ADDR:9X);
+
+_ANYCS = _MCS0 # _MCS1 # _MCS2 # _MCS3 # _NIXIE_CS;
+_ANYOP = _ANYCS & (IORC # IOWC);
+
+MCS0 = _MCS0;
+MCS1 = _MCS1;
+MCS2 = _MCS2;
+MCS3 = _MCS3;
+
+DIGLOAD = _NIXIE_CS & IOWC;
+
+TMP = _ANYOP & (!MWAIT01);  /* & (!MWAIT23); */
+
+CLK01.D = TMP;
+
+_XACK = CLK01;
+
+XACK = 'b'1;
+XACK.OE = _XACK & TMP;
+ 
+BUSEN = _ANYOP # _XACK;
+BDIR = !(_ANYCS & IORC);
+
+
