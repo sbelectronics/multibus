@@ -24,11 +24,11 @@ ORIG:	NOP					; Some NOPs makes it easier for the disassembler to sync
 	MVI	A,60				; 60 second delay
 	CALL	DELAYS
 
-	LXI	D,ENDM
+	LXI	D,ENDMSG
 	CALL	ZSOUT
 	CALL	EXIT				; Exit to ISIS
 
 STARTM:	DB	'Start!', 0DH, 0AH, 0
-ENDM:	DB	'End!', 0DH, 0AH, 0
+ENDMSG:	DB	'End!', 0DH, 0AH, 0
 
 	END	ORIG
