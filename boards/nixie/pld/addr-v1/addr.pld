@@ -10,10 +10,10 @@ Device G22V10;
 
 /* Inputs: */
 Pin 1  = CCLK;
-Pin 2  = A0;   /* NOTE: Least significant 3 addr bits are not needed */
-Pin 3  = A1;
-Pin 4  = A2;
-Pin 5  = A3;
+Pin 2  = NC2;
+Pin 3  = NC3;
+Pin 4  = NC4;
+Pin 5  = A3;  /* NOTE: Least significant 3 addr bits are not needed */
 Pin 6  = A4;
 Pin 7  = A5;
 Pin 8  = A6;
@@ -34,7 +34,7 @@ Pin 16 = !MCS1;
 Pin 15 = !MCS2;
 Pin 14 = !MCS3;
 
-FIELD ADDR = [A7..A0];
+FIELD ADDR = [A7..A3];
 
 /* rightmost multimodule socket */
 

@@ -27,7 +27,7 @@ Device G22V10;
 Pin 1  = CCLK;
 Pin 2  = !MWAIT01;
 Pin 3  = !MWAIT23;
-Pin 4  = A2;
+Pin 4  = NC4;
 Pin 5  = A3; /* NOTE: Least significant 3 addr bits are not needed */
 Pin 6  = A4;
 Pin 7  = A5;
