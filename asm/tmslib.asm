@@ -155,7 +155,7 @@ TMSADR: MOV	A,C
 TMSEXT:	CALL	TMSWAT		; wait for not speaking
 
 	MVI	A,060H
-	OUT	0B0H
+	OUT	TMSOUT
 
 	LDAX	D		; get length into C
 	SUI	010H		; We always send at least 16 bytes so subtract 16
@@ -165,12 +165,12 @@ TMSEXT:	CALL	TMSWAT		; wait for not speaking
 
 	MVI	B,16		; send the first 16
 TMSXL1:	LDAX	D
-	OUT	0B0H
+	OUT	TMSOUT
 	INX	D
 	DCR	B
 	JNZ	TMSXL1
 
-TMSXL2:	IN	0B0H		; wait for buffer less than half full
+TMSXL2:	IN	TMSIN		; wait for buffer less than half full
 	ANI	040H
 	JZ	TMSXL2
 
@@ -184,7 +184,7 @@ TMSXL2:	IN	0B0H		; wait for buffer less than half full
 
 	MVI	B,8		; send 8 bytes
 TMSXL3:	LDAX	D
-	OUT	0B0H
+	OUT	TMSOUT
 	INX	D
 	DCR	B
 	JNZ	TMSXL3
@@ -193,7 +193,7 @@ TMSXL3:	LDAX	D
 
 TMSXL4: MOV	B,C		; less than 8 bytes left in C
 TMSXL5:	LDAX	D
-	OUT	0B0H
+	OUT	TMSOUT
 	INX	D
 	DCR	B
 	JNZ	TMSXL5
