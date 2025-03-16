@@ -71,7 +71,7 @@ NIXS1	EQU	NIXBAS+7
 
 IVEC	EQU	008H		; vector address for int1
 
-DTZ	EQU	-8		; Default timezone is UTC-8
+DTZ	EQU	-7		; Default timezone is UTC-7
 
 ORIG:	LXI	SP, STACK
 	CALL	COPEN
@@ -154,9 +154,9 @@ ADJTIM:	LDA	HOUR
 	MOV	B,A
 	LDA	TZONE
 	ADD	B
-	CPI	24H		; Are we past 24 ?
+	CPI	24		; Are we past 24 ?
 	JM	NOTP24
-	SBI	24H
+	SBI	24
 NOTP24: STA	HOUR
 	RET
 
