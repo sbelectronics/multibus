@@ -18,6 +18,7 @@ $macrofile
 	EXTRN EXIT
 	EXTRN CSTS
 	EXTRN CI
+	EXTRN TUPPER
 
 	EXTRN DOFLAG
 	EXTRN FLAGD
@@ -99,26 +100,39 @@ QUIET:
 
 CQUIT:	LDA	BTNSIG		; button interrupt signaled
 	ORA	A
-	JNZ	KEYS		; yes - say time
+	JNZ	BTNPSH		; yes - say time
 
 	CALL	CSTS		; key pending?
 	ORA	A
 	RZ			; No Key
 	CALL	CI
+
 	CPI	3		; CTRL-C ?
 	JZ	LEAVE
+
 	CPI	26		; CTRL-Z ?
 	JZ	LEAVE
-	CPI	'Q'		; 'Q'
+
+	CALL	TUPPER		; convert to upper case
+
+	CPI	'Q'		; 'Q' - quit
 	JZ	LEAVE
-	CPI	'q'		; 'q'
-	JZ	LEAVE
-	CPI	'S'
-	JZ	KEYS
-	CPI	's'
-	JZ	KEYS
-	RET
-KEYS:	CALL	SAYTIM
+
+	CPI	'S'		; 'S' - say time
+	JNZ	CQNS
+	CALL	SAYTIM
+
+CQNS:	CPI	'T'		; 'T' say time on TMS only
+	JNZ	CQNT
+	CALL	SAYTMS
+
+CQNT:	CPI	'D'		; 'D' say time on digitalker only
+	JNZ	CQND
+	CALL	SAYDIG
+
+CQND:	RET
+
+BTNPSH:	CALL	SAYTIM
 	MVI	A,0
 	STA	BTNSIG
 	RET
@@ -214,17 +228,16 @@ PRNTIM:	LDA	HOUR
 
 	; SAYTIM - say time on digitalker or TMS-5220
 
-SAYTIM: LDA	FLAGD
-	CPI	0FFH
-	JNZ	SAYDIG
-	LDA	FLAGT
-	CPI	0FFH
-	JNZ	SAYTMS
+SAYTIM: CALL	SAYDIG
+	CALL	SAYTMS
 	RET
 
 	; SAYDIG - say time on digitalker
 
-SAYDIG:	LDA	HOUR
+SAYDIG:	LDA	FLAGD
+	CPI	0FFH
+	RZ
+	LDA	HOUR
 	CPI	13
 	JC	SAYAM
 	SUI	12
@@ -248,9 +261,12 @@ SAYDG0:	LXI	D, MTIME	; say the time
 
 	; SAYTMS - say time on tms-5220
 
-SAYTMS:	LDA	HOUR
+SAYTMS:	LDA	FLAGT
+	CPI	0FFH
+	RZ
+	LDA	HOUR
 	CPI	13
-	JC	SAYAM
+	JC	SAYTAM
 	SUI	12
 	CALL	SAYTM0
 	CALL	V7PM		; say PM
