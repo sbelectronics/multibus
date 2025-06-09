@@ -63,7 +63,9 @@ _MCS3 = MPST & ((ADDR:28) # (ADDR:29) # (ADDR:2A) # (ADDR:2B) # (ADDR:2C) # (ADD
 
 _NIXIE_CS = (ADDR:9X);
 
-_ANYCS = _MCS0 # _MCS1 # _MCS2 # _MCS3 # _NIXIE_CS;
+_IGNORE = (ADDR:FX); /* when booting ISIS on the SBC-202, XACK any writes to FC and friends */
+
+_ANYCS = _MCS0 # _MCS1 # _MCS2 # _MCS3 # _NIXIE_CS # _IGNORE;
 _ANYOP = _ANYCS & (IORC # IOWC);
 
 MCS0 = _MCS0;

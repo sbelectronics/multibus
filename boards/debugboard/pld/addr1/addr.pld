@@ -36,7 +36,7 @@ Pin 14 = !MCS3;
 
 FIELD ADDR = [A7..A0];
 
-/* rightmost multimodule socket */
+/* middle multimodule socket */
 
 _MCS0 = MPST01 & ((ADDR:10) # (ADDR:11) # (ADDR:12) # (ADDR:13) # (ADDR:14) # (ADDR:15) # (ADDR:16) # (ADDR:17));
 _MCS1 = MPST01 & ((ADDR:18) # (ADDR:19) # (ADDR:1A) # (ADDR:1B) # (ADDR:1C) # (ADDR:1D) # (ADDR:1E) # (ADDR:1F));
@@ -45,6 +45,8 @@ _MCS1 = MPST01 & ((ADDR:18) # (ADDR:19) # (ADDR:1A) # (ADDR:1B) # (ADDR:1C) # (A
 
 _MCS2 = MPST23 & ((ADDR:00) # (ADDR:01) # (ADDR:02) # (ADDR:03) # (ADDR:04) # (ADDR:05) # (ADDR:06) # (ADDR:07));
 _MCS3 = MPST23 & ((ADDR:08) # (ADDR:09) # (ADDR:0A) # (ADDR:0B) # (ADDR:0C) # (ADDR:0D) # (ADDR:0E) # (ADDR:0F));
+
+/* far right multimodule socket */
 
 _MCS4 = MPST45 & ((ADDR:20) # (ADDR:21) # (ADDR:22) # (ADDR:23) # (ADDR:24) # (ADDR:25) # (ADDR:26) # (ADDR:27));
 _MCS5 = MPST45 & ((ADDR:28) # (ADDR:29) # (ADDR:2A) # (ADDR:2B) # (ADDR:2C) # (ADDR:2D) # (ADDR:2E) # (ADDR:2F));

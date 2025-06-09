@@ -36,7 +36,7 @@ Pin 14 = !MCS9;
 
 FIELD ADDR = [A7..A0];
 
-/* rightmost multimodule socket */
+/* middle multimodule socket */
 
 _MCS6 = MPST67 & ((ADDR:40) # (ADDR:41) # (ADDR:42) # (ADDR:43) # (ADDR:44) # (ADDR:45) # (ADDR:46) # (ADDR:47));
 _MCS7 = MPST67 & ((ADDR:48) # (ADDR:49) # (ADDR:4A) # (ADDR:4B) # (ADDR:4C) # (ADDR:4D) # (ADDR:4E) # (ADDR:4F));
@@ -45,6 +45,8 @@ _MCS7 = MPST67 & ((ADDR:48) # (ADDR:49) # (ADDR:4A) # (ADDR:4B) # (ADDR:4C) # (A
 
 _MCS8 = MPST89 & ((ADDR:30) # (ADDR:31) # (ADDR:32) # (ADDR:33) # (ADDR:34) # (ADDR:35) # (ADDR:36) # (ADDR:37));
 _MCS9 = MPST89 & ((ADDR:38) # (ADDR:39) # (ADDR:3A) # (ADDR:3B) # (ADDR:3C) # (ADDR:3D) # (ADDR:3E) # (ADDR:3F));
+
+/* rightmost multimodule socket */
 
 _MCSA = MPSTAB & ((ADDR:50) # (ADDR:51) # (ADDR:52) # (ADDR:53) # (ADDR:54) # (ADDR:55) # (ADDR:56) # (ADDR:57));
 _MCSB = MPSTAB & ((ADDR:58) # (ADDR:59) # (ADDR:5A) # (ADDR:5B) # (ADDR:5C) # (ADDR:5D) # (ADDR:5E) # (ADDR:5F));
