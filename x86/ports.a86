@@ -1,0 +1,42 @@
+	; asm86 ports.a86
+
+NAME	PORTS
+
+CGROUP  GROUP   CODE
+
+CODE    SEGMENT PUBLIC 'CODE'
+
+	PUBLIC	outp_
+	PUBLIC	inp_
+
+	ASSUME  CS:CGROUP
+
+outp_:
+	push	si
+	push	di
+	push	bp
+	mov	bp, sp
+	mov	ax, word ptr [bp+0Ah]	; rightmost arg - value
+	mov	dx, word ptr [bp+08h]	; leftmost arg - port
+	out	dx, al
+	pop	bp
+	pop	di
+	pop	si
+	ret
+
+inp_:
+	push	si
+	push	di
+	push	bp
+	mov	bp, sp
+	mov	dx, word ptr [bp+08H]
+	in	al, dx
+	xor	ah, ah
+	pop	bp
+	pop	di
+	pop	si
+	ret
+
+CODE	ENDS
+
+	END
