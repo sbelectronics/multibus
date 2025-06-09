@@ -1,0 +1,83 @@
+Name addr;
+Partno G22V10#2;
+Revision;
+Date 09/1/2023;
+Designer Scott Baker;
+Company ;
+Location ;
+Assembly multibus ram address;
+Device G22V10;
+
+/* Inputs: */
+Pin 1  = IOWC;
+Pin 2  = A0;
+Pin 3  = A1;
+Pin 4  = A2;
+Pin 5  = A3;
+Pin 6  = A4;
+Pin 7  = A5;
+Pin 8  = A6;
+Pin 9  = A7;
+Pin 10 = IORC;
+Pin 11 = !MPST01;
+Pin 13 = !MPST23;
+
+/* Outputs:  */
+Pin 23 = NC23;
+Pin 22 = !IOSEL;
+Pin 21 = NC21;
+Pin 20 = NC20;
+Pin 19 = NC19;
+Pin 18 = !WAITABLE;
+Pin 17 = !MCS0;
+Pin 16 = !MCS1;
+Pin 15 = !MCS2;
+Pin 14 = !MCS3;
+
+FIELD ADDR = [A7..A0];
+
+/*
+ * Ports in use
+ *
+ * 68 - SBC-206
+ * A0 - SBC-204 floppy
+ * ?? - SBC-215 wake-up is at 100H
+ * 180 - SBC-208
+ * 880 - SBC-254 ?
+ */
+
+/* rightmost multimodule socket */
+
+_MCS0 = MPST01 & ((ADDR:B0) # (ADDR:B1) # (ADDR:B2) # (ADDR:B3) # (ADDR:B4) # (ADDR:B5) # (ADDR:B6) # (ADDR:B7));
+_MCS1 = MPST01 & ((ADDR:B8) # (ADDR:B9) # (ADDR:BA) # (ADDR:BB) # (ADDR:BC) # (ADDR:BD) # (ADDR:BE) # (ADDR:BF));
+
+/* leftmost multimodule socket */
+
+_MCS2 = MPST23 & ((ADDR:A0) # (ADDR:A1) # (ADDR:A2) # (ADDR:A3) # (ADDR:A4) # (ADDR:A5) # (ADDR:A6) # (ADDR:A7));
+_MCS3 = MPST23 & ((ADDR:A8) # (ADDR:A9) # (ADDR:AA) # (ADDR:AB) # (ADDR:AC) # (ADDR:AD) # (ADDR:AE) # (ADDR:AF));
+
+/*
+ * Note: SBX bus specification says that MCS0-MCS3 should only be active for an IO request, not a memory
+ * request. This is done on the 80/24 board using IO/M signal from the CPU. The MWAIT behavior for the
+ * SBX-331 module depends on this -- it will cause an MWAIT whenever MCS is active, which will occur
+ * on memory transfers. We can resolve this on the 331 by jumpering E28-E29 instead of E27-E29.
+ *
+ * SBX bus specification also requires 25ns time between start/end of CS and start/end of IOR or IOW
+ * cycle.
+ *
+ * Cannot easily accommodate both of the above requirements at the same time. If I try to only do
+ * MCS on an IOR or IOW cycle, then I lose the 25ns time.
+ *
+ * Another idea would be to add IORC/IOWC inputs to XACK PLD, and just ignore MWAIT if not in an IO
+ * cycle.
+ */
+
+MCS0 = _MCS0;
+MCS1 = _MCS1;
+MCS2 = _MCS2;
+MCS3 = _MCS3;
+
+WAITABLE = 'b'0;
+
+IOSEL = _MCS0 # _MCS1 # _MCS2 # _MCS3;
+

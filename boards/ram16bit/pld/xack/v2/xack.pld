@@ -1,0 +1,58 @@
+Name xack;
+Partno G22V10#2;
+Revision;
+Date 09/1/2023;
+Designer Scott Baker;
+Company ;
+Location ;
+Assembly multibus ram xack;
+Device G22V10;
+
+/* Inputs: */
+Pin 1  = CCLK;
+Pin 2  = !BOARDCS;
+Pin 3  = CLKJMP;
+Pin 4  = NC4;
+Pin 5  = !MWAIT01;
+Pin 6  = !MWAIT23;
+Pin 7  = IORC_H;
+Pin 8  = IOWC_H;
+Pin 9  = !WAITABLE;
+Pin 10 = NC10;
+Pin 11 = NC11;
+Pin 13 = NC12;
+
+/* Outputs:  */
+Pin 23 = CLK01;
+Pin 22 = CLK12;
+Pin 21 = CLK23;
+Pin 20 = CLK34;
+Pin 19 = CLK45;
+Pin 18 = CLK56;
+Pin 17 = CLK67;
+Pin 16 = CLK78;
+Pin 15 = !XACK;
+Pin 14 = TMP;
+
+/* TO DO: Deal with MWAIT01 and MWAIT23 */
+
+TMP = BOARDCS & (!MWAIT01) & (!MWAIT23);
+
+CLK01.D = TMP;
+
+CLK12.D = CLK01 & TMP;
+
+CLK23.D = CLK12 & TMP;
+
+CLK34.D = CLK23 & TMP;
+
+CLK45.D = CLK34 & TMP;
+
+CLK56.D = CLK45 & TMP;
+
+CLK67.D = CLK56 & TMP;
+
+CLK78.D = CLK67 & TMP;
+
+XACK = 'b'1;
+XACK.OE = CLKJMP & TMP;

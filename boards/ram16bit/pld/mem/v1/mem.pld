@@ -1,0 +1,87 @@
+Name mem;
+Partno G22V10#2;
+Revision;
+Date 09/1/2023;
+Designer Scott Baker;
+Company ;
+Location ;
+Assembly multibus ram mem;
+Device G22V10;
+
+/* Inputs: */
+Pin 1  = MSBANK;
+Pin 2  = !BHEN;
+Pin 3  = A0;
+Pin 4  = NC4;
+Pin 5  = A14;
+Pin 6  = A15;
+Pin 7  = !IOSEL;
+Pin 8  = !XACK;
+Pin 9  = MRDC;
+Pin 10 = MWTC;
+Pin 11 = IORC;
+Pin 13 = IOWC;
+
+/* Outputs:  */
+Pin 23 = !RAMLRD;
+Pin 22 = !RAMLWR;
+Pin 21 = !RAMHRD;
+Pin 20 = !RAMHWR;
+Pin 19 = !BOARDCS;
+Pin 18 = BDIR;
+Pin 17 = NC17;
+Pin 16 = !BENL;
+Pin 15 = !BENH;
+Pin 14 = !BENS;
+
+/* Note: Calling one signal BHEN and another BENH is confusing.
+ *
+ * BHEN - bus high enable - from CPU to memory board, indicating high byte to be transfered
+ *
+ * BENH - bus transveiver enable high - to enable transceivers
+ */
+
+_RAMCS = MSBANK;
+_RAMLCS = _RAMCS & !A0;
+_RAMHCS = _RAMCS & (BHEN # A0);
+
+_RAMRD = _RAMCS & MRDC;
+_RAMWR = _RAMCS & MWTC;
+
+_RAMLRD = _RAMRD & _RAMLCS;
+_RAMLWR = _RAMWR & _RAMLCS;
+_RAMHRD = _RAMRD & _RAMHCS;
+_RAMHWR = _RAMWR & _RAMHCS;
+
+_IORD = IOSEL & IORC;
+_IOWR = IOSEL & IOWC;
+
+_BOARDCS = _RAMLRD # _RAMLWR # _RAMHRD # _RAMHWR # _IORD # _IOWR;
+
+/* extended write -- hold the bus transceiver active through the duration
+ * of XACK. See multibus manual.
+ */
+
+_EXTW = (XACK & (MWTC # IOWC));
+
+RAMLRD = _RAMLRD;
+RAMLWR = _RAMLWR;
+RAMHRD = _RAMHRD;
+RAMHWR = _RAMHWR;
+
+IORD = _IORD;
+IOWR = _IOWR;
+
+BOARDCS = _BOARDCS;
+
+BENL = (_BOARDCS & (!A0));           /* Low transceiver if A0 is low -> even addrs */
+BENH = (_BOARDCS & BHEN);            /* high transceiver if A0 is high and BENH -> odd addrs on high data bus */
+BENS = (_BOARDCS & (!BHEN) & A0);    /* swap transceiver if A0 is high and !BENH -> odd addrs on low data bus */
+
+/* BENL and BENS cannot both be active at the same time as BENL is A0=0 and BENS is A0=1 */
+/* BENL and BENH can both be active at the same time on a word transfer */
+
+/* NOTE: odd addresses on multimodules not supported at this time */
+
+BDIR = !(_RAMRD # _IORD);
+
