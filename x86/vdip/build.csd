@@ -1,3 +1,5 @@
+asm86 ports.a86
+
 cc86 vinc.c include(:sd:inc/) define(multibus)
 cc86 vutil.c include(:sd:inc/) define(multibus)
 cc86 vget.c include(:sd:inc/) define(multibus)
