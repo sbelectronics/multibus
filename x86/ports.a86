@@ -12,29 +12,21 @@ CODE    SEGMENT PUBLIC 'CODE'
 	ASSUME  CS:CGROUP
 
 outp_:
-	push	si
-	push	di
 	push	bp
 	mov	bp, sp
-	mov	ax, word ptr [bp+0Ah]	; rightmost arg - value
-	mov	dx, word ptr [bp+08h]	; leftmost arg - port
+	mov	ax, word ptr [bp+06h]	; rightmost arg - value
+	mov	dx, word ptr [bp+04h]	; leftmost arg - port
 	out	dx, al
 	pop	bp
-	pop	di
-	pop	si
 	ret
 
 inp_:
-	push	si
-	push	di
 	push	bp
 	mov	bp, sp
-	mov	dx, word ptr [bp+08H]
+	mov	dx, word ptr [bp+04H]
 	in	al, dx
 	xor	ah, ah
 	pop	bp
-	pop	di
-	pop	si
 	ret
 
 CODE	ENDS
