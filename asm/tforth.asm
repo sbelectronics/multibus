@@ -302,8 +302,10 @@ ORIG:	NOP
 ;		HL	NEVER OUTPUT FROM NEXT
 ;			INPUT ONLY WHEN 'HPUSH' CALLED
 ;
-UP:	DW	INITR0	; USER AREA POINTER
-RPP:	DW	INITR0	; RETURN STACK POINTER
+;UP:	DW	INITR0	; USER AREA POINTER
+;RPP:	DW	INITR0	; RETURN STACK POINTER
+UP	EQU	SUP	; relocated to startp area in RAM
+RPP	EQU	SRPP	; relocated to startp area in RAM
 ;
 ;------------------------------------------------------
 ;
@@ -3337,7 +3339,10 @@ ENDIF
 ;
 ;
 ;
-PATCH:	DB	0C5H	; FORTH
+PATCH:
+RUP:	DW	INITR0
+RRPP:	DW	INITR0
+FORW:	DB	0C5H	; FORTH
 	DB	'FORT'
 	DB	'H'+80H
 	DW	BYE-6
@@ -3368,7 +3373,9 @@ TASK:	DW	DOCOL
 TASKE:
 ;
 
-OFORW	EQU	0				; offset of FORTH word
+OUP	EQU	RUP-PATCH
+ORPP	EQU	RRPP-PATCH
+OFORW	EQU	FORW-PATCH			; offset of FORTH word
 OFORTH	EQU	FORTH-PATCH			; offset of FORTH
 OFVOC	EQU	FVOC-PATCH			; offset of vocabulary pointer in FORTH word
 OINPAT	EQU	INPAT-PATCH			; offset of patch for IN
@@ -3378,6 +3385,8 @@ OTASK	EQU	TASK-PATCH			; offset of TASK
 OTASKE	EQU	TASKE-PATCH			; offset for first free dictionary entry
 PATLEN	EQU	TASKE-PATCH			; length of patch to copy
 
+SUP	EQU	STARTP + OUP
+SRPP	EQU	STARTP + ORPP
 SFORW	EQU	STARTP + OFORW
 SFORTH	EQU	STARTP + OFORTH			; Change FORTH to SFORTH
 SFVOC	EQU	STARTP + OFVOC			; Change FORTH+6 to SVOC
