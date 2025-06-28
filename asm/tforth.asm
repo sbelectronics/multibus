@@ -2879,7 +2879,10 @@ ENDIF
 ; ---------- PROMPT-80 ------------
 
 IF (PROMP80)
-CPOUT	EQU	07FAH	; The Prompt-80 COUT at 7FAH takes C as input and destroys A
+CPOUT:	MOV	A,C	; Mask off high bit
+	ANI	07FH
+	MOV	C,A
+	JMP	07FAH	; The Prompt-80 COUT at 7FAH takes C as input and destroys A
 
 PQTER:	CALL	07E5H	; The Prompt-80 subroutine at 7E5 returns A=0 if no character or A=FF if character
 	LXI	H,0
