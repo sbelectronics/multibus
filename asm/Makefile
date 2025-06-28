@@ -79,6 +79,27 @@ forth-run:
 forth.obj: forth.asm
 	$(ASMTOOL) forth.asm
 
+tforth: tforth.obj conio.obj
+	$(LINKTOOL) tforth.obj,conio.obj,syspds.lib to tforth.lnk
+	$(LOCATETOOL) tforth.lnk to tforth MAP PRINT\(tforth.map\)
+
+tforth.hex: tforth
+	$(OBJHEXTOOL) tforth to tforth.hex
+
+tforth-run: tforth
+	$(ISIS) -l tforth
+
+tforth.obj: tforth.asm
+	$(ASMTOOL) tforth.asm
+
+tforth.rom: tforth.asm
+	sed 's:PROMP80\tEQU\t0:PROMP80\tEQU\t1:g' tforth.asm > tforth.tmp1
+	sed 's:ISIS\tEQU\t1:ISIS\tEQU\t0:g' tforth.tmp1 > tforth.tmp2
+	rm -rf zout
+	zmac --dri -i -8 -c -s -n tforth.tmp2
+	cp zout/tforth.cim tforth.rom
+	rm -f tforth.tmp1 tforth.tmp2
+
 conio.obj: conio.asm
 	$(ASMTOOL) conio.asm
 
@@ -345,4 +366,4 @@ vm7tim.obj: vm7tim.asm
 	$(ASMTOOL) vm7tim.asm
 
 clean:
-	rm -f ports.inc PORTS.INC *.hex *.obj *.lnk *.map *.lst *.tmp *.lis forth hello life basic argtes bong wiltel song memtes deltes til311 aysong sertes rtc gps nixclk dig votrax coptes drives tms
+	rm -f ports.inc PORTS.INC *.hex *.obj *.lnk *.map *.lst *.tmp *.lis forth hello life basic argtes bong wiltel song memtes deltes til311 aysong sertes rtc gps nixclk dig votrax coptes drives tms tforth
