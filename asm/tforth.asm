@@ -2583,16 +2583,16 @@ IF (PROMP80)
 	LXI	H,3FEEH			; Put "Forth" onto the prompt-80's display
 	MVI	A,08BH			; Wastes 21 bytes of CSEG to do this
 	MOV	M,A
-	INR	H
+	INX	H
 	MVI	A,087H
 	MOV	M,A
-	INR	H
+	INX	H
 	MVI	A,0AFH
 	MOV	M,A
-	INR	H
+	INX	H
 	MVI	A,0A3H
 	MOV	M,A
-	INR	H
+	INX	H
 	MVI	A,08EH
 	MOV	M,A
 ENDIF

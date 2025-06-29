@@ -100,6 +100,14 @@ tforth.rom: tforth.asm
 	cp zout/tforth.cim tforth.rom
 	rm -f tforth.tmp1 tforth.tmp2
 
+swh.rom: swh.asm
+	zmac --dri -i -8 -c -s -n swh.asm
+	cp zout/swh.cim swh.rom
+
+sp80.rom: sp80.asm
+	zmac --dri -i -8 -c -s -n sp80.asm
+	cp zout/sp80.cim sp80.rom
+
 conio.obj: conio.asm
 	$(ASMTOOL) conio.asm
 
