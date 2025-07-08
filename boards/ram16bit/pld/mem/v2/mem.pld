@@ -75,12 +75,14 @@ IOWR = _IOWR;
 
 BOARDCS = _BOARDCS;
 
-_IOLO = _IOOP & !BHEN & A0;
+_IOLO = _IOOP & !BHEN;                   /* IOLO is true if IO is occurrent in the lower data bus. That happens regardless of A0, any IOOP when BHEN is false. */
 
-BENL = _BOARDCS & (!A0 # _IOLO);         /* Low transceiver if A0 is low -> even addrs. Also if accessing IO Port odd addr, since IO port is 8-bit */
+BENL = _BOARDCS & (!A0 # _IOLO);         /* Low transceiver if A0 is low -> even addrs. Also if accessing any 8-bit port on the lower data bus */
 BENH = _BOARDCS & BHEN & !_IOOP;         /* high transceiver if A0 is high and BENH -> odd addrs on high data bus */
 BENS = _BOARDCS & !BHEN & A0 & !_IOOP;   /* swap transceiver if A0 is high and !BENH -> odd addrs on low data bus */
-BENI = _BOARDCS & BHEN & A0 & _IOOP;     /* io-swap transceiver if A0 is high and BHEN and IOSEL -> odd addresses to multimodule ports */
+BENI = 'b'0;                             /* this has not been observed to occur */
+
+/* BENI = _BOARDCS & BHEN & A0 & _IOOP;     /* io-swap transceiver if A0 is high and BHEN and IOSEL -> odd addresses to multimodule ports */
 
 /* BENL and BENS cannot both be active at the same time as BENL is A0=0 and BENS is A0=1 */
 /* BENI and BENH cannot both be active at the same time as BENI is only on _IOOP and BENH is only on !_IOOP */
