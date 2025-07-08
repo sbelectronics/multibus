@@ -108,6 +108,14 @@ sp80.rom: sp80.asm
 	zmac --dri -i -8 -c -s -n sp80.asm
 	cp zout/sp80.cim sp80.rom
 
+cylon.rom: cylon.asm
+	zmac --dri -i -8 -c -s -n cylon.asm
+	cp zout/cylon.cim cylon.rom
+
+cylon-3d00.rom: cylon-3d00.asm
+	zmac --dri -i -8 -c -s -n cylon-3d00.asm
+	cp zout/cylon-3d00.cim cylon-3d00.rom
+
 conio.obj: conio.asm
 	$(ASMTOOL) conio.asm
 

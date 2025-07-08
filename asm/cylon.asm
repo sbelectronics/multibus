@@ -1,4 +1,5 @@
-	;;  cylon lights for prompt-80
+	;; cylon lights for prompt-80
+        ;; Used in RAM at 3000H. Requires 80/10B with 4KB RAM.
 	
         ORG     3000H       ; Program starts at 0000H
 START:  MVI     A,01H       ; Initialize A with rightmost bit
