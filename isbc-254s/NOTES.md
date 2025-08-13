@@ -87,6 +87,15 @@ interrupt jumpers
   E64 - int1 (assumed; not tested)
   E66 - int0
 
+misc jumpers
+  E130-E131  8218 pin 23 to bus BPRO
+
+7242 enable jumpers
+  E1-E2   U3 ENABLE-A to 7250-CS  (alternate E2-E3 for ENABLE-B)
+  E20-E19 U4 ENABLE-A to 7250-CS  (alternate E19-E21 for ENABLE-B)
+  E17-E16 U5 ENABLE-A to 7250-CS  (alternate E16-E18 for ENABLE-B)
+  E33-E32 U6 ENABLE-A to 7250-CS  (alternate E33-E31 for ENABLE-B)
+
 orig board
 
   address
@@ -111,6 +120,7 @@ orig board
 
   other
   E49-E48 - xack shortest possible
+  E130-E131
 
 scott's changes for irmx-86 / irmx-286
   move E69-E70 to E75-E76 for board at 0x880
