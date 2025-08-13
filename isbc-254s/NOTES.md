@@ -119,8 +119,12 @@ orig board
   E57-E62 - int2 unknown purpose (seems unnecessary when using with iRMX)
 
   other
+  E1-E2 - ENABLE-A
+  E20-E19 - ENABLE-A
+  E17-E16 - ENABLE-A
+  E33-E32 - ENABLE-A
   E49-E48 - xack shortest possible
-  E130-E131
+  E130-E131 - BPRO
 
 scott's changes for irmx-86 / irmx-286
   move E69-E70 to E75-E76 for board at 0x880
