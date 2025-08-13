@@ -1,6 +1,28 @@
-# iSBC-254s bubble memory multibus board notes on jumper settings
+# iSBC-254s bubble memory multibus board notes
 
 Scott Baker, https://www.smbaker.com/
+
+## general notes
+
+* iRMX-86 / iRMX-286 release 6 includes a built in iSBC-254S driver, configured for 4 bubbles. If you have
+  a 254 with fewer bubbles, then you may have to rebuild iRMX.
+  
+* The port and int configured in iRMX is 0x880 and int3. You will need to either ensure your 254S is
+  configured the same, or rebuild iRMX with your settings.
+
+* According to the ICU utilitity, multiple iSBC-254S can be used together on the same system.
+
+* Make sure to place the iSBC-254S at a greater priority than other bus master controllers. For example,
+  I had to move my iSBC-215 winchester controller to a lower slot in my System 310. If you do not do this,
+  then operations that involve multiple devices (for example a COPY from HDD to Bubble) may fail.
+  My suspicion is the higher priority device will starve the bubble for bus access during a write
+  operation. Bubbles are sensitive to timing and power.
+
+* The iSBC-264 is a different board, featuring 7114 bubbles (4 megabit) and 7225 controller. It is probably
+  not compatible with the iSBC-254S driver, though I have not tried. If you have a system that supports the
+  264, please let me know.
+
+## jumper settings
 
 ```
 Jumpers E67 through E82 - 8-bit address select
@@ -129,4 +151,54 @@ orig board
 scott's changes for irmx-86 / irmx-286
   move E69-E70 to E75-E76 for board at 0x880
   removed jumper E57-E62
+```
+
+## short demo
+
+```
+- attachdevice b0 as :bub:
+:bub:, volume is not a NAMED volume
+
+- diskverify :bub:
+iRMX 86 Disk Verify Utility, V3.0
+Copyright 1981, 1982, 1984 Intel Corporation
+*disk
+Device name = b0            
+   Physical disk
+      Device gran = 0100
+       Block size = 0100
+     No of blocks = 00000800
+      Volume size = 00080000
+
+- format :bub:scottb
+volume (scottb) will be formatted as a NAMED volume
+    granularity   =   256        map start =        992
+    interleave    =     5
+    files         =   200
+    extensionsize =     3
+    volume size   =   512 K
+
+
+volume formatted
+
+- dir :bub: e
+25 JUL 84  23:33:23
+DIRECTORY OF  :bub:  ON VOLUME scottb
+                                                 GRAN
+  NAME         AT   ACC      BLKS     LENGTH   VOL FIL OWNER           LAST MOD
+
+         0  FILES           0  BLKS             0  BYTES
+
+       200  FILES       1,958  BLKS       501,248  BYTES FREE
+
+- copy hello.c to :bub:
+hello.c copied TO :bub:hello.c
+
+- copy :bub:hello.c to :co:
+#include <stdio.h>
+main() {
+    printf("Hello, World!\n");
+    return 0;
+}
+:bub:hello.c copied TO :co:
 ```
